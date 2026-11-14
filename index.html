@@ -1,0 +1,2885 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Great Breakout — Farmart 3D Guerrilla Campaign</title>
+    <meta
+      name="description"
+      content="Interactive 3D screen-tearing guerrilla marketing animation and Farmart grocery eCommerce showcase built for Botble Farmart Laravel."
+    />
+    <meta property="og:title" content="The Great Breakout — Farmart 3D Guerrilla Campaign" />
+    <meta
+      property="og:description"
+      content="Interactive 3D screen-tearing guerrilla marketing animation and Farmart grocery eCommerce showcase built for Botble Farmart Laravel."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Fonts: Fraunces (Display), Plus Jakarta Sans (Body), JetBrains Mono (Tabular Numerals) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Official Tailwind CSS CDN for standalone portability -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- =====================================================================
+         SECTION 1: CUSTOM CSS (Copy into Botble Admin -> Appearance -> Custom CSS)
+         All selectors are namespaced with .bf-gb-* or .bf-store-* to prevent
+         any interference with existing Botble Farmart theme styles.
+         ===================================================================== -->
+    <style id="bf-great-breakout-styles">
+      :root {
+        --bf-fresh-green: #279447;
+        --bf-deep-green: #155d35;
+        --bf-warm-cream: #fff9ef;
+        --bf-natural-white: #ffffff;
+        --bf-accent-orange: #f49b38;
+        --bf-ink: #132a1c;
+        --bf-muted: #526658;
+        --bf-border: rgba(21, 93, 53, 0.12);
+      }
+
+      .bf-store-root {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: var(--bf-warm-cream);
+        color: var(--bf-ink);
+        overflow-x: hidden;
+      }
+
+      .bf-font-display {
+        font-family: 'Fraunces', Georgia, serif;
+        text-wrap: balance;
+      }
+
+      .bf-font-mono {
+        font-family: 'JetBrains Mono', monospace;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .bf-tabular {
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Subtle surface disturbance vibration on Scene 2 */
+      @keyframes bf-gb-surface-tremor {
+        0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+        15% { transform: translate3d(-3px, 2px, 0) rotate(-0.18deg); }
+        30% { transform: translate3d(4px, -2px, 0) rotate(0.22deg); }
+        45% { transform: translate3d(-5px, -1px, 0) rotate(-0.25deg); }
+        60% { transform: translate3d(4px, 3px, 0) rotate(0.18deg); }
+        75% { transform: translate3d(-3px, 1px, 0) rotate(-0.12deg); }
+        90% { transform: translate3d(2px, -2px, 0) rotate(0.08deg); }
+      }
+
+      .bf-gb-disturbance-shake {
+        animation: bf-gb-surface-tremor 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+      }
+
+      /* Breakout Overlay Root — Isolated Fixed Layer */
+      .bf-gb-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9990;
+        pointer-events: none;
+        perspective: 1300px;
+        overflow: hidden;
+        opacity: 0;
+        transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .bf-gb-overlay.bf-gb-active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .bf-gb-overlay.bf-gb-closing {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Subtle dim scrim over the untouched storefront around the tear */
+      .bf-gb-ambient-scrim {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          circle at 50% 48%,
+          rgba(8, 26, 15, 0.48) 0%,
+          rgba(12, 34, 20, 0.68) 48%,
+          rgba(9, 24, 14, 0.82) 100%
+        );
+        opacity: 0;
+        transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .bf-gb-scene-tearing .bf-gb-ambient-scrim,
+      .bf-gb-scene-breakout .bf-gb-ambient-scrim,
+      .bf-gb-scene-reveal .bf-gb-ambient-scrim {
+        opacity: 1;
+      }
+
+      /* 3D Stage Container */
+      .bf-gb-stage-3d {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Tear & Void Assembly */
+      .bf-gb-tear-assembly {
+        position: relative;
+        width: min(95vw, 1060px);
+        height: min(88vh, 760px);
+        transform-style: preserve-3d;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Hairline Stress Fracture SVG (Scene 2) */
+      .bf-gb-fracture-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 12;
+        opacity: 0;
+        transition: opacity 0.22s ease-out;
+      }
+
+      .bf-gb-scene-disturbance .bf-gb-fracture-svg,
+      .bf-gb-scene-tearing .bf-gb-fracture-svg {
+        opacity: 1;
+      }
+
+      /* Torn Dimensional Interior & Paper Flaps SVG (Scene 3+) */
+      .bf-gb-tear-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 15;
+        transform: translateZ(0px) scale(var(--bf-tear-scale, 0.04));
+        opacity: var(--bf-tear-opacity, 0);
+        transition:
+          transform 0.72s cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 0.28s ease-out;
+      }
+
+      /* Paper Flap Curl Animations */
+      .bf-gb-flap-top-left,
+      .bf-gb-flap-top-right,
+      .bf-gb-flap-bottom-left,
+      .bf-gb-flap-bottom-right {
+        transform-origin: center;
+        transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .bf-gb-scene-tearing .bf-gb-flap-top-left,
+      .bf-gb-scene-breakout .bf-gb-flap-top-left,
+      .bf-gb-scene-reveal .bf-gb-flap-top-left {
+        transform: translate3d(-14px, -18px, 24px) rotate(-6deg) scale(1.03);
+      }
+
+      .bf-gb-scene-tearing .bf-gb-flap-top-right,
+      .bf-gb-scene-breakout .bf-gb-flap-top-right,
+      .bf-gb-scene-reveal .bf-gb-flap-top-right {
+        transform: translate3d(16px, -15px, 28px) rotate(7deg) scale(1.03);
+      }
+
+      .bf-gb-scene-tearing .bf-gb-flap-bottom-left,
+      .bf-gb-scene-breakout .bf-gb-flap-bottom-left,
+      .bf-gb-scene-reveal .bf-gb-flap-bottom-left {
+        transform: translate3d(-18px, 16px, 22px) rotate(5deg) scale(1.02);
+      }
+
+      .bf-gb-scene-tearing .bf-gb-flap-bottom-right,
+      .bf-gb-scene-breakout .bf-gb-flap-bottom-right,
+      .bf-gb-scene-reveal .bf-gb-flap-bottom-right {
+        transform: translate3d(18px, 18px, 26px) rotate(-6deg) scale(1.02);
+      }
+
+      /* 3D Basket & Independent Produce Rig (Scene 4+) */
+      .bf-gb-basket-rig {
+        position: relative;
+        width: min(88vw, 560px);
+        height: min(44vh, 330px);
+        transform-style: preserve-3d;
+        z-index: 28;
+        opacity: 0;
+        transform: translate3d(0, 56px, -240px) scale(0.42) rotateX(16deg);
+        transition:
+          transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 0.45s ease-out;
+        margin-top: 8px;
+      }
+
+      .bf-gb-scene-breakout .bf-gb-basket-rig,
+      .bf-gb-scene-reveal .bf-gb-basket-rig {
+        opacity: 1;
+        transform: translate3d(
+            var(--bf-rig-tx, 0px),
+            var(--bf-rig-ty, -6px),
+            var(--bf-rig-tz, 110px)
+          )
+          scale(var(--bf-rig-scale, 1))
+          rotateX(var(--bf-rig-rx, 0deg))
+          rotateY(var(--bf-rig-ry, 0deg));
+      }
+
+      /* Dynamic Contact Shadow beneath the emerging 3D Basket */
+      .bf-gb-basket-contact-shadow {
+        position: absolute;
+        left: 50%;
+        bottom: 2%;
+        width: 74%;
+        height: 22%;
+        transform: translate3d(-50%, 18px, 20px);
+        background: radial-gradient(
+          ellipse at center,
+          rgba(3, 12, 7, 0.85) 0%,
+          rgba(5, 18, 10, 0.5) 52%,
+          rgba(5, 18, 10, 0) 76%
+        );
+        filter: blur(14px);
+        pointer-events: none;
+        z-index: 18;
+        transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+      }
+
+      /* Individual 3D Produce Layer Items */
+      .bf-gb-produce-item {
+        position: absolute;
+        transform-style: preserve-3d;
+        will-change: transform;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate3d(0, 40px, -120px) scale(0.35);
+        transition:
+          opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+          transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .bf-gb-scene-breakout .bf-gb-produce-item,
+      .bf-gb-scene-reveal .bf-gb-produce-item {
+        opacity: 1;
+      }
+
+      /* Promotional Reveal Card / Lockup (Scene 5 & 6) */
+      .bf-gb-promo-panel {
+        position: relative;
+        z-index: 42;
+        width: min(92vw, 620px);
+        margin-top: -8px;
+        padding: 1.35rem 1.85rem;
+        border-radius: 20px;
+        background: linear-gradient(
+          165deg,
+          rgba(15, 46, 28, 0.96) 0%,
+          rgba(9, 28, 17, 0.98) 100%
+        );
+        border: 1px solid rgba(255, 249, 239, 0.22);
+        box-shadow:
+          0 28px 60px rgba(3, 12, 7, 0.78),
+          0 0 0 1px rgba(39, 148, 71, 0.32) inset;
+        backdrop-filter: blur(12px);
+        text-align: center;
+        color: var(--bf-warm-cream);
+        opacity: 0;
+        transform: translate3d(0, 28px, 140px) scale(0.94);
+        transition:
+          opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+          transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .bf-gb-scene-reveal .bf-gb-promo-panel {
+        opacity: 1;
+        transform: translate3d(0, 0, 150px) scale(1);
+      }
+
+      /* Particle Canvas overlay (behind promo panel so text is 100% crisp) */
+      .bf-gb-particle-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 26;
+      }
+
+      /* Product Card Hover Lift */
+      .bf-product-card {
+        transition:
+          transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+          box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .bf-product-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 30px -10px rgba(21, 93, 53, 0.12);
+      }
+
+      /* Responsive Mobile Composition Adjustments */
+      @media (max-width: 768px) {
+        .bf-gb-tear-assembly {
+          width: 96vw;
+          height: 86vh;
+        }
+        .bf-gb-basket-rig {
+          width: 88vw;
+          height: 230px;
+          margin-top: 0;
+        }
+        .bf-gb-promo-panel {
+          width: 92vw;
+          padding: 1rem 1.1rem;
+          margin-top: -10px;
+        }
+      }
+
+      /* Respect prefers-reduced-motion */
+      @media (prefers-reduced-motion: reduce) {
+        .bf-gb-disturbance-shake {
+          animation: none !important;
+        }
+        .bf-gb-tear-svg,
+        .bf-gb-basket-rig,
+        .bf-gb-produce-item,
+        .bf-gb-promo-panel {
+          transition-duration: 0.15s !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bf-store-root min-h-screen antialiased selection:bg-[#279447] selection:text-white" data-breakout-scene="normal">
+    <!-- =====================================================================
+         DEMO DIRECTOR BAR (Live Preview Controls for Contest Judges & Client)
+         Allows instant manual playback, replay, sound toggle, and Botble code export.
+         ===================================================================== -->
+    <div
+      id="bf-demo-director-bar"
+      role="region"
+      aria-label="Campaign Animation Demo Controls"
+      class="sticky top-0 z-50 border-b border-[#155D35]/20 bg-[#155D35] text-[#FFF9EF] px-4 py-2.5 shadow-sm"
+    >
+      <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="font-semibold tracking-tight text-xs sm:text-sm text-[#FFF9EF] whitespace-nowrap">
+            THE GREAT BREAKOUT · 3D Guerrilla Campaign
+          </span>
+          <span aria-hidden="true" class="text-[#FFF9EF]/40 hidden sm:inline">·</span>
+          <span
+            id="bf-demo-status-label"
+            class="text-xs text-[#FFF9EF]/80 bf-font-mono hidden sm:inline whitespace-nowrap"
+          >
+            Scene 1: Normal Storefront (Auto-trigger in 2.6s)
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            id="bf-btn-play-breakout"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#F49B38] text-[#132A1C] hover:bg-[#f7a952] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-xs"
+          >
+            Play Animation
+          </button>
+          <button
+            type="button"
+            id="bf-btn-replay-breakout"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-[#FFF9EF] hover:bg-white/20 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            Replay Animation
+          </button>
+          <button
+            type="button"
+            id="bf-btn-sound-toggle"
+            aria-pressed="false"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-[#FFF9EF] hover:bg-white/20 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            Sound: Off
+          </button>
+          <button
+            type="button"
+            id="bf-btn-open-config"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium border border-[#FFF9EF]/25 text-[#FFF9EF] hover:bg-white/10 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            Config &amp; Botble Guide
+          </button>
+          <button
+            type="button"
+            id="bf-btn-download-html"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#279447] text-white hover:bg-[#32b558] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-xs"
+          >
+            Download index.html
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         FARMART GROCERY E-COMMERCE STOREFRONT (Background Host Environment)
+         Follows Strict 3-Zone Top Bar Contract + 3 Content Sections + Footer
+         ===================================================================== -->
+    <div id="bf-storefront-wrapper" class="transition-transform duration-300">
+      <!-- Top Bar Contract: [Zone 1: Brand Wordmark] — [Zone 2: 5 Single-Line Nav Links] — [Zone 3: Primary Cart Action] -->
+      <header class="border-b border-[#155D35]/10 bg-white">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-8 px-4 sm:px-6 py-4">
+          <!-- Zone 1: Single text element wordmark -->
+          <a
+            href="#top"
+            id="bf-brand-wordmark"
+            class="bf-font-display text-2xl font-bold tracking-tight text-[#155D35] whitespace-nowrap shrink-0"
+          >
+            Farmart
+          </a>
+
+          <!-- Zone 2: 5 concise single-line navigation links -->
+          <nav aria-label="Primary Store Categories" class="hidden md:flex items-center gap-6 text-sm font-medium text-[#526658]">
+            <a
+              href="#farm-fresh-catalog"
+              data-category-nav="all"
+              class="bf-nav-link text-[#155D35] font-semibold hover:text-[#279447] transition-colors whitespace-nowrap shrink-0"
+            >
+              All Produce
+            </a>
+            <a
+              href="#farm-fresh-catalog"
+              data-category-nav="vegetables"
+              class="bf-nav-link hover:text-[#279447] transition-colors whitespace-nowrap shrink-0"
+            >
+              Vegetables
+            </a>
+            <a
+              href="#farm-fresh-catalog"
+              data-category-nav="fruits"
+              class="bf-nav-link hover:text-[#279447] transition-colors whitespace-nowrap shrink-0"
+            >
+              Orchard Fruits
+            </a>
+            <a
+              href="#farm-fresh-catalog"
+              data-category-nav="baskets"
+              class="bf-nav-link hover:text-[#279447] transition-colors whitespace-nowrap shrink-0"
+            >
+              Harvest Baskets
+            </a>
+            <a
+              href="#special-event-showcase"
+              data-category-nav="event"
+              class="bf-nav-link hover:text-[#279447] transition-colors whitespace-nowrap shrink-0"
+            >
+              Special Event
+            </a>
+          </nav>
+
+          <!-- Zone 3: 1 primary action (Shopping Cart Drawer Trigger) -->
+          <div class="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              id="bf-btn-open-cart"
+              aria-label="Open Shopping Cart"
+              class="px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-[#279447] rounded-lg hover:bg-[#155D35] transition-colors whitespace-nowrap shrink-0 cursor-pointer bf-tabular"
+            >
+              Shopping Cart (<span id="bf-cart-count">2</span>) · $<span id="bf-cart-header-total">18.30</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main id="bf-main-content">
+        <!-- SECTION 1: Storefront Hero & Search Bar -->
+        <section class="py-10 sm:py-14 px-4 sm:px-6 border-b border-[#155D35]/10 bg-[#FFF9EF]">
+          <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <!-- Left Column: Storefront Proposition & Live Search -->
+            <div class="lg:col-span-7 space-y-5">
+              <div class="flex items-center gap-2 text-xs font-medium text-[#155D35]">
+                <span>Certified Organic Growers</span>
+                <span aria-hidden="true">·</span>
+                <span>Same-Day Cold Chain Delivery</span>
+                <span aria-hidden="true">·</span>
+                <span>100% Harvest Guarantee</span>
+              </div>
+
+              <h1
+                class="bf-font-display text-3xl sm:text-5xl font-bold text-[#132A1C] tracking-tight leading-[1.12] max-w-2xl"
+              >
+                Field-Harvested Groceries Delivered From Local Soil to Your Table.
+              </h1>
+
+              <p class="text-base text-[#526658] leading-relaxed max-w-xl">
+                Shop peak-season heirloom vegetables, sun-ripened orchard citrus, and curated wicker harvest baskets picked within 24 hours of dispatch.
+              </p>
+
+              <!-- Functional Storefront Search & Category Bar -->
+              <form
+                id="bf-store-search-form"
+                class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-xl pt-1"
+                role="search"
+              >
+                <div class="relative flex-1">
+                  <label for="bf-store-search-input" class="sr-only">Search fresh farm products</label>
+                  <input
+                    id="bf-store-search-input"
+                    type="search"
+                    placeholder="Search tomatoes, Valencia oranges, harvest basket..."
+                    class="w-full px-4 py-3 rounded-xl bg-white border border-[#155D35]/20 text-sm text-[#132A1C] placeholder-[#526658]/70 focus:outline-none focus:border-[#279447]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  class="px-5 py-3 rounded-xl text-sm font-semibold bg-[#155D35] text-white hover:bg-[#279447] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  Search Produce
+                </button>
+              </form>
+
+              <div class="flex flex-wrap items-center gap-4 pt-1 text-xs text-[#526658]">
+                <span>Popular today:</span>
+                <button
+                  type="button"
+                  data-quick-search="Tomatoes"
+                  class="underline hover:text-[#155D35] cursor-pointer whitespace-nowrap"
+                >
+                  Heirloom Tomatoes
+                </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  data-quick-search="Oranges"
+                  class="underline hover:text-[#155D35] cursor-pointer whitespace-nowrap"
+                >
+                  Valencia Oranges
+                </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  data-quick-search="Basket"
+                  class="underline hover:text-[#155D35] cursor-pointer whitespace-nowrap"
+                >
+                  Farm Harvest Basket
+                </button>
+                <span aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  id="bf-hero-trigger-breakout"
+                  class="font-semibold text-[#279447] hover:text-[#155D35] underline cursor-pointer whitespace-nowrap"
+                >
+                  Preview 3D Breakout Event
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Column: Clean Editorial Storefront Hero Visual Card -->
+            <div class="lg:col-span-5">
+              <div class="rounded-2xl bg-white border border-[#155D35]/12 p-6 shadow-xs">
+                <div class="aspect-[4/3] rounded-xl bg-[#FFF9EF] flex items-center justify-center p-4 overflow-hidden relative">
+                  <!-- Custom Hero Botanical Arrangement SVG -->
+                  <svg
+                    viewBox="0 0 480 340"
+                    class="w-full h-full"
+                    role="img"
+                    aria-label="Illustration of Farmart wicker harvest basket overflowing with fresh tomatoes, carrots, leafy greens, and citrus"
+                  >
+                    <defs>
+                      <radialGradient id="bfHeroGlow" cx="50%" cy="45%" r="55%">
+                        <stop offset="0%" stop-color="#F49B38" stop-opacity="0.22" />
+                        <stop offset="70%" stop-color="#279447" stop-opacity="0.08" />
+                        <stop offset="100%" stop-color="#FFF9EF" stop-opacity="0" />
+                      </radialGradient>
+                      <linearGradient id="bfHeroBasketGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#DDA15E" />
+                        <stop offset="50%" stop-color="#BC6C25" />
+                        <stop offset="100%" stop-color="#7F4F24" />
+                      </linearGradient>
+                      <radialGradient id="bfHeroTomato" cx="35%" cy="30%" r="65%">
+                        <stop offset="0%" stop-color="#FF6B5B" />
+                        <stop offset="55%" stop-color="#E63926" />
+                        <stop offset="100%" stop-color="#9E1B12" />
+                      </radialGradient>
+                      <radialGradient id="bfHeroOrange" cx="35%" cy="30%" r="65%">
+                        <stop offset="0%" stop-color="#FFD166" />
+                        <stop offset="60%" stop-color="#F49B38" />
+                        <stop offset="100%" stop-color="#C8640A" />
+                      </radialGradient>
+                    </defs>
+                    <ellipse cx="240" cy="175" rx="200" ry="135" fill="url(#bfHeroGlow)" />
+                    <ellipse cx="240" cy="285" rx="145" ry="20" fill="#155D35" opacity="0.12" />
+                    <!-- Romaine Leaves Back -->
+                    <path
+                      d="M140 190 C105 120, 145 65, 195 105 C215 60, 265 65, 275 115 C320 75, 365 120, 335 190 Z"
+                      fill="#279447"
+                    />
+                    <path
+                      d="M165 185 C140 130, 175 88, 212 122 C230 85, 275 90, 282 135 C315 105, 345 140, 315 190 Z"
+                      fill="#40B060"
+                    />
+                    <!-- Carrots -->
+                    <g transform="translate(295, 95) rotate(24)">
+                      <path d="M10 0 C22 -25, 35 -30, 25 -45 M12 0 C12 -30, 18 -42, 5 -52 M14 0 C30 -18, 44 -20, 48 -35" stroke="#279447" stroke-width="4" stroke-linecap="round" fill="none" />
+                      <path d="M0 0 L24 0 L16 95 C15 102, 9 102, 8 95 Z" fill="#F49B38" />
+                    </g>
+                    <!-- Oranges & Tomatoes -->
+                    <circle cx="275" cy="168" r="36" fill="url(#bfHeroOrange)" />
+                    <circle cx="195" cy="172" r="38" fill="url(#bfHeroTomato)" />
+                    <circle cx="238" cy="182" r="34" fill="url(#bfHeroTomato)" />
+                    <!-- Wicker Basket -->
+                    <path
+                      d="M105 188 L375 188 L342 282 C338 292, 326 296, 314 296 L166 296 C154 296, 142 292, 138 282 Z"
+                      fill="url(#bfHeroBasketGrad)"
+                    />
+                    <rect x="96" y="176" width="288" height="20" rx="10" fill="#DDA15E" stroke="#7F4F24" stroke-width="2" />
+                    <path
+                      d="M135 215 H345 M142 242 H338 M150 268 H330 M175 196 L185 294 M218 196 L222 294 M262 196 L258 294 M305 196 L295 294"
+                      stroke="#7F4F24"
+                      stroke-width="2.5"
+                      opacity="0.55"
+                    />
+                  </svg>
+                </div>
+
+                <div class="pt-4 flex items-center justify-between gap-4">
+                  <div>
+                    <div class="text-xs text-[#526658]">Featured Seasonal Bundle</div>
+                    <div class="text-base font-semibold text-[#132A1C]">
+                      Grand Organic Family Harvest Basket
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-lg font-bold text-[#155D35] bf-tabular">$34.50</div>
+                    <button
+                      type="button"
+                      data-add-product="harvest-basket"
+                      class="mt-1 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#279447] text-white hover:bg-[#155D35] transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      Add to Cart
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: Interactive Farm-Fresh Product Catalog -->
+        <section id="farm-fresh-catalog" class="py-12 sm:py-16 px-4 sm:px-6 bg-white">
+          <div class="max-w-7xl mx-auto">
+            <!-- Section Header + Functional Segmented Category Controls -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-[#155D35]/10">
+              <div>
+                <div class="text-xs font-medium text-[#279447]">
+                  Daily Field Selection · Morning Harvest
+                </div>
+                <h2 class="bf-font-display text-2xl sm:text-3xl font-bold text-[#132A1C] mt-1">
+                  Farm-Fresh Market Catalog
+                </h2>
+              </div>
+
+              <!-- Interactive Filter Buttons (Functional Segmented Bar) -->
+              <div
+                role="tablist"
+                aria-label="Filter products by category"
+                class="flex flex-wrap items-center gap-1.5 p-1.5 bg-[#FFF9EF] rounded-xl border border-[#155D35]/12"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="true"
+                  data-filter-btn="all"
+                  class="bf-filter-tab px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#155D35] text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  All Produce (8)
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  data-filter-btn="vegetables"
+                  class="bf-filter-tab px-3.5 py-2 text-xs font-medium rounded-lg text-[#526658] hover:text-[#132A1C] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  Vegetables
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  data-filter-btn="fruits"
+                  class="bf-filter-tab px-3.5 py-2 text-xs font-medium rounded-lg text-[#526658] hover:text-[#132A1C] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  Orchard Fruits
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  data-filter-btn="baskets"
+                  class="bf-filter-tab px-3.5 py-2 text-xs font-medium rounded-lg text-[#526658] hover:text-[#132A1C] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  Baskets &amp; Bundles
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  data-filter-btn="event"
+                  class="bf-filter-tab px-3.5 py-2 text-xs font-medium rounded-lg text-[#526658] hover:text-[#132A1C] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  Special Event Picks
+                </button>
+              </div>
+            </div>
+
+            <!-- Active Search Filter Banner (Hidden unless searching) -->
+            <div
+              id="bf-search-status-bar"
+              class="hidden mt-6 p-3.5 rounded-xl bg-[#FFF9EF] border border-[#155D35]/15 flex items-center justify-between gap-4 text-xs text-[#132A1C]"
+            >
+              <span id="bf-search-status-text">Showing filtered results</span>
+              <button
+                type="button"
+                id="bf-btn-clear-filters"
+                class="font-semibold text-[#155D35] underline hover:text-[#279447] cursor-pointer whitespace-nowrap"
+              >
+                Reset Filter
+              </button>
+            </div>
+
+            <!-- 4-Column / 3-Column Product Grid -->
+            <div
+              id="bf-product-grid"
+              class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+            >
+              <!-- Populated deterministically on initialization via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: Special Farm Fresh Event Banner & Quality Standards -->
+        <section
+          id="special-event-showcase"
+          class="py-14 sm:py-16 px-4 sm:px-6 bg-[#FFF9EF] border-t border-[#155D35]/10"
+        >
+          <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div class="lg:col-span-7 space-y-4">
+              <div class="text-xs font-semibold text-[#279447] tracking-wide">
+                SPECIAL EVENT — LIMITED TIME
+              </div>
+              <h2 class="bf-font-display text-2xl sm:text-4xl font-bold text-[#132A1C] tracking-tight">
+                Experience the Farmart 3D Screen-Breakout Harvest Campaign.
+              </h2>
+              <p class="text-sm sm:text-base text-[#526658] leading-relaxed max-w-2xl">
+                Our flagship seasonal showcase brings vine-ripened heirloom tomatoes, crisp green romaine, Nantes carrots, sweet bell peppers, honeycrisp apples, and Valencia oranges straight through your screen.
+              </p>
+              <div class="pt-2 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  id="bf-section-replay-btn"
+                  class="px-5 py-3 rounded-xl text-sm font-semibold bg-[#279447] text-white hover:bg-[#155D35] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  Launch 3D Breakout Experience
+                </button>
+                <button
+                  type="button"
+                  id="bf-section-filter-event-btn"
+                  class="px-5 py-3 rounded-xl text-sm font-semibold bg-white border border-[#155D35]/20 text-[#155D35] hover:bg-[#155D35]/5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  View Event Produce Only
+                </button>
+              </div>
+            </div>
+
+            <div class="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="p-5 rounded-xl bg-white border border-[#155D35]/10">
+                <div class="bf-font-mono text-2xl font-bold text-[#155D35] bf-tabular">24 hrs</div>
+                <div class="text-sm font-semibold text-[#132A1C] mt-1">Field-to-Door Harvest</div>
+                <p class="text-xs text-[#526658] mt-1 leading-relaxed">
+                  Picked at sunrise from partner organic farms and packed in breathable natural wicker &amp; pulp crates.
+                </p>
+              </div>
+              <div class="p-5 rounded-xl bg-white border border-[#155D35]/10">
+                <div class="bf-font-mono text-2xl font-bold text-[#279447] bf-tabular">100%</div>
+                <div class="text-sm font-semibold text-[#132A1C] mt-1">Zero-Residue Certified</div>
+                <p class="text-xs text-[#526658] mt-1 leading-relaxed">
+                  Every lot is inspected for peak Brix sweetness, crisp cellular hydration, and natural botanical aroma.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Quiet Storefront Footer -->
+      <footer class="bg-white border-t border-[#155D35]/10 py-10 px-4 sm:px-6 text-xs text-[#526658]">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <span class="bf-font-display font-bold text-base text-[#155D35]">Farmart</span>
+            <span class="mx-2" aria-hidden="true">·</span>
+            <span>Organic Grocery &amp; Farm-Fresh Marketplace Demonstration</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-4">
+            <a href="#farm-fresh-catalog" class="hover:text-[#155D35] transition-colors">Fresh Catalog</a>
+            <span aria-hidden="true">·</span>
+            <a href="#special-event-showcase" class="hover:text-[#155D35] transition-colors">Special Event</a>
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              id="bf-footer-open-docs"
+              class="hover:text-[#155D35] underline cursor-pointer"
+            >
+              Botble Farmart Laravel Installation Guide
+            </button>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- =====================================================================
+         SHOPPING CART SLIDE-OVER DRAWER
+         ===================================================================== -->
+    <div
+      id="bf-cart-drawer-backdrop"
+      class="fixed inset-0 z-50 bg-black/50 hidden items-stretch justify-end"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bf-cart-drawer-title"
+    >
+      <div class="w-full max-w-md bg-white h-full flex flex-col justify-between p-6 shadow-2xl overflow-y-auto">
+        <div>
+          <div class="flex items-center justify-between pb-4 border-b border-[#155D35]/12">
+            <h2 id="bf-cart-drawer-title" class="bf-font-display text-xl font-bold text-[#132A1C]">
+              Your Farmart Basket
+            </h2>
+            <button
+              type="button"
+              id="bf-btn-close-cart"
+              aria-label="Close Shopping Cart"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#FFF9EF] text-[#132A1C] hover:bg-[#155D35]/10 cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+
+          <div id="bf-cart-items-list" class="divide-y divide-[#155D35]/10 my-4">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-[#155D35]/12 space-y-4">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-[#526658]">Harvest Subtotal</span>
+            <span id="bf-cart-drawer-subtotal" class="text-lg font-bold text-[#155D35] bf-tabular">$18.30</span>
+          </div>
+          <div
+            id="bf-cart-checkout-feedback"
+            class="hidden p-3 rounded-xl bg-[#279447]/10 border border-[#279447]/30 text-xs text-[#155D35] font-medium"
+          >
+            Order #FM-1048 reserved! Your farm-fresh harvest basket is being prepared.
+          </div>
+          <button
+            type="button"
+            id="bf-btn-checkout-cart"
+            class="w-full py-3 rounded-xl text-sm font-semibold bg-[#279447] text-white hover:bg-[#155D35] transition-colors cursor-pointer"
+          >
+            Proceed to Fresh Checkout
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         LIVE CONFIGURATION & BOTBLE FARMART INTEGRATION GUIDE MODAL
+         ===================================================================== -->
+    <div
+      id="bf-config-modal-backdrop"
+      class="fixed inset-0 z-50 bg-black/60 hidden items-center justify-center p-4 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bf-config-modal-title"
+    >
+      <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-[#155D35]/15 space-y-6">
+        <div class="flex items-start justify-between gap-4 pb-4 border-b border-[#155D35]/12">
+          <div>
+            <div class="text-xs font-semibold text-[#279447]">
+              Campaign Settings &amp; Botble Farmart Integration
+            </div>
+            <h2 id="bf-config-modal-title" class="bf-font-display text-2xl font-bold text-[#132A1C] mt-0.5">
+              Editable Configuration &amp; Installation Guide
+            </h2>
+          </div>
+          <button
+            type="button"
+            id="bf-btn-close-config"
+            aria-label="Close Configuration Modal"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#FFF9EF] text-[#132A1C] hover:bg-[#155D35]/10 cursor-pointer shrink-0"
+          >
+            Close
+          </button>
+        </div>
+
+        <!-- Live Editable Promotional Form -->
+        <form id="bf-config-form" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="bf-cfg-headline" class="block text-xs font-semibold text-[#132A1C] mb-1">
+                Promotional Headline
+              </label>
+              <input
+                id="bf-cfg-headline"
+                type="text"
+                required
+                class="w-full px-3.5 py-2 rounded-lg border border-[#155D35]/20 text-sm text-[#132A1C]"
+              />
+            </div>
+            <div>
+              <label for="bf-cfg-offer" class="block text-xs font-semibold text-[#132A1C] mb-1">
+                Offer Kicker Text
+              </label>
+              <input
+                id="bf-cfg-offer"
+                type="text"
+                required
+                class="w-full px-3.5 py-2 rounded-lg border border-[#155D35]/20 text-sm text-[#132A1C]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label for="bf-cfg-subheadline" class="block text-xs font-semibold text-[#132A1C] mb-1">
+              Subheadline Description
+            </label>
+            <input
+              id="bf-cfg-subheadline"
+              type="text"
+              required
+              class="w-full px-3.5 py-2 rounded-lg border border-[#155D35]/20 text-sm text-[#132A1C]"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label for="bf-cfg-primary-cta" class="block text-xs font-semibold text-[#132A1C] mb-1">
+                Primary CTA Label
+              </label>
+              <input
+                id="bf-cfg-primary-cta"
+                type="text"
+                required
+                class="w-full px-3.5 py-2 rounded-lg border border-[#155D35]/20 text-sm text-[#132A1C]"
+              />
+            </div>
+            <div>
+              <label for="bf-cfg-secondary-cta" class="block text-xs font-semibold text-[#132A1C] mb-1">
+                Secondary CTA Label
+              </label>
+              <input
+                id="bf-cfg-secondary-cta"
+                type="text"
+                required
+                class="w-full px-3.5 py-2 rounded-lg border border-[#155D35]/20 text-sm text-[#132A1C]"
+              />
+            </div>
+            <div>
+              <label for="bf-cfg-delay" class="block text-xs font-semibold text-[#132A1C] mb-1">
+                Auto-Trigger Delay (ms)
+              </label>
+              <input
+                id="bf-cfg-delay"
+                type="number"
+                min="500"
+                max="15000"
+                step="100"
+                required
+                class="w-full px-3.5 py-2 rounded-lg border border-[#155D35]/20 text-sm text-[#132A1C] bf-font-mono"
+              />
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              id="bf-btn-reset-config"
+              class="px-4 py-2 rounded-lg text-xs font-semibold border border-[#155D35]/20 text-[#526658] hover:text-[#132A1C] cursor-pointer"
+            >
+              Restore Defaults
+            </button>
+            <button
+              type="submit"
+              class="px-5 py-2 rounded-lg text-xs font-semibold bg-[#279447] text-white hover:bg-[#155D35] transition-colors cursor-pointer"
+            >
+              Save &amp; Replay Animation
+            </button>
+          </div>
+        </form>
+
+        <!-- Botble Farmart Laravel Split Instructions -->
+        <div class="pt-4 border-t border-[#155D35]/12 space-y-3 text-xs text-[#526658] leading-relaxed">
+          <h3 class="text-sm font-bold text-[#132A1C]">
+            Splitting <code class="bf-font-mono text-[#155D35]">index.html</code> for Botble Farmart Admin Fields
+          </h3>
+          <ol class="list-decimal list-inside space-y-1.5">
+            <li>
+              <strong>Custom CSS</strong> (<code class="bf-font-mono">Admin &rarr; Appearance &rarr; Custom CSS</code>): Copy the contents inside <code class="bf-font-mono">&lt;style id="bf-great-breakout-styles"&gt;</code>. All selectors use the isolated <code class="bf-font-mono">.bf-gb-*</code> prefix.
+            </li>
+            <li>
+              <strong>Custom HTML</strong> (<code class="bf-font-mono">Admin &rarr; Appearance &rarr; Custom HTML &rarr; Body</code>): Copy the <code class="bf-font-mono">&lt;div id="bf-gb-overlay"&gt;...&lt;/div&gt;</code> container block below.
+            </li>
+            <li>
+              <strong>Custom JS</strong> (<code class="bf-font-mono">Admin &rarr; Appearance &rarr; Custom JS &rarr; Footer</code>): Copy the <code class="bf-font-mono">&lt;script id="bf-great-breakout-script"&gt;</code> block. Edit <code class="bf-font-mono">BREAKOUT_CONFIG</code> at the top of the script to adjust URLs, delay, or copy.
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         SECTION 2: THE GREAT BREAKOUT 3D OVERLAY CONTAINER
+         (Copy into Botble Admin -> Appearance -> Custom HTML -> Body)
+         Completely independent of host DOM; removable without side effects.
+         ===================================================================== -->
+    <div
+      id="bf-gb-overlay"
+      class="bf-gb-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bf-gb-promo-headline"
+      aria-describedby="bf-gb-promo-subheadline"
+      aria-hidden="true"
+    >
+      <!-- Ambient Backdrop Scrim -->
+      <div id="bf-gb-backdrop-scrim" class="bf-gb-ambient-scrim"></div>
+
+      <!-- Canvas for Procedural Outward Particles (Leaves, Dewdrops, Botanical Motes) -->
+      <canvas id="bf-gb-particle-canvas" class="bf-gb-particle-canvas"></canvas>
+
+      <!-- Always-Accessible Floating Top-Right Controls (Close + Replay + Sound) -->
+      <div class="fixed top-4 right-4 z-[9999] flex items-center gap-2">
+        <button
+          type="button"
+          id="bf-gb-overlay-replay-btn"
+          aria-label="Replay 3D Breakout Animation"
+          class="px-3.5 py-2 rounded-full text-xs font-semibold bg-[#132A1C]/85 text-[#FFF9EF] border border-[#FFF9EF]/20 hover:bg-[#155D35] transition-colors backdrop-blur-md cursor-pointer shadow-lg whitespace-nowrap"
+        >
+          Replay
+        </button>
+        <button
+          type="button"
+          id="bf-gb-overlay-close-btn"
+          aria-label="Close Promotional Experience (Escape)"
+          class="px-4 py-2 rounded-full text-xs font-bold bg-[#FFF9EF] text-[#132A1C] hover:bg-[#F49B38] transition-colors cursor-pointer shadow-lg whitespace-nowrap"
+        >
+          Close ✕
+        </button>
+      </div>
+
+      <!-- 3D Perspective Stage -->
+      <div id="bf-gb-stage-3d" class="bf-gb-stage-3d">
+        <div id="bf-gb-tear-assembly" class="bf-gb-tear-assembly">
+          <!-- SCENE 2: Initial Surface Disturbance & Hairline Stress Fracture Lines -->
+          <svg
+            class="bf-gb-fracture-svg"
+            viewBox="0 0 1000 700"
+            preserveAspectRatio="xMidYMid slice"
+            aria-hidden="true"
+          >
+            <g stroke="#132A1C" stroke-linecap="round" fill="none">
+              <path
+                d="M500 340 L440 275 L370 250 L290 195 M500 340 L575 265 L660 230 L735 170 M500 340 L590 385 L695 420 M500 340 L415 410 L325 465"
+                stroke-width="3"
+                opacity="0.65"
+              />
+              <path
+                d="M440 275 L465 210 M575 265 L540 190 M590 385 L645 340 M415 410 L365 370"
+                stroke-width="1.75"
+                opacity="0.45"
+              />
+            </g>
+          </svg>
+
+          <!-- SCENE 3: Progressive Jagged Screen Tear, Fibrous Paper Flaps & Deep Dimensional Interior -->
+          <svg
+            id="bf-gb-tear-svg"
+            class="bf-gb-tear-svg"
+            viewBox="0 0 1000 700"
+            preserveAspectRatio="xMidYMid meet"
+            aria-hidden="true"
+          >
+            <defs>
+              <!-- Deep Botanical Dimensional Void Gradient -->
+              <radialGradient id="bfVoidDepthGrad" cx="50%" cy="46%" r="54%">
+                <stop offset="0%" stop-color="#1E5E3A" />
+                <stop offset="38%" stop-color="#0F3520" />
+                <stop offset="75%" stop-color="#071C10" />
+                <stop offset="100%" stop-color="#030D07" />
+              </radialGradient>
+
+              <!-- Warm Volumetric Rim Spotlight inside the Tear -->
+              <radialGradient id="bfVoidSpotlight" cx="50%" cy="42%" r="45%">
+                <stop offset="0%" stop-color="#F49B38" stop-opacity="0.42" />
+                <stop offset="50%" stop-color="#279447" stop-opacity="0.18" />
+                <stop offset="100%" stop-color="#030D07" stop-opacity="0" />
+              </radialGradient>
+
+              <!-- Curled Paper Flap Gradients (Simulating Torn Website Surface Backing) -->
+              <linearGradient id="bfPaperFlapTopLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#D8D0C5" />
+                <stop offset="55%" stop-color="#FFF9EF" />
+                <stop offset="100%" stop-color="#B8AFA2" />
+              </linearGradient>
+
+              <linearGradient id="bfPaperFlapTopRight" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#CFC6BA" />
+                <stop offset="50%" stop-color="#FFFFFF" />
+                <stop offset="100%" stop-color="#B2A89A" />
+              </linearGradient>
+
+              <linearGradient id="bfPaperFlapBottom" x1="50%" y1="100%" x2="50%" y2="0%">
+                <stop offset="0%" stop-color="#C2B9AC" />
+                <stop offset="60%" stop-color="#FFF9EF" />
+                <stop offset="100%" stop-color="#9E9588" />
+              </linearGradient>
+
+              <!-- Clip Path for the Irregular Torn Opening -->
+              <clipPath id="bfJaggedTearAperture">
+                <polygon
+                  points="
+                    500,75 568,112 645,92 710,148 795,155 832,225 895,282 858,358
+                    888,432 812,485 758,555 668,548 592,605 500,578 412,608 338,552
+                    242,562 192,492 115,438 148,355 108,278 175,222 212,148 295,142
+                    362,88 438,114
+                  "
+                />
+              </clipPath>
+            </defs>
+
+            <!-- Outer Cast Shadow of the Torn Flaps against the Host Screen -->
+            <polygon
+              points="
+                500,62 574,100 655,78 725,138 812,145 852,218 918,278 878,360
+                910,442 828,498 772,572 674,565 596,625 500,595 408,628 330,568
+                228,578 175,505 95,448 132,356 88,274 158,214 198,136 288,130
+                355,74 435,102
+              "
+              fill="#041109"
+              opacity="0.55"
+            />
+
+            <!-- White Fibrous Torn Paper Rim (Under-layer exposed before the void) -->
+            <polygon
+              points="
+                500,68 571,106 650,84 718,142 804,150 842,222 906,280 868,358
+                898,436 820,492 764,562 670,556 594,614 500,586 410,618 334,560
+                235,570 184,498 105,442 140,355 98,276 166,218 205,142 292,136
+                358,80 436,108
+              "
+              fill="#F5EFE6"
+              stroke="#E2D9CC"
+              stroke-width="3"
+            />
+
+            <!-- Deep Dimensional Interior Void Clipped to Jagged Tear -->
+            <g clip-path="url(#bfJaggedTearAperture)">
+              <rect x="80" y="60" width="840" height="580" fill="url(#bfVoidDepthGrad)" />
+              <ellipse cx="500" cy="335" rx="370" ry="250" fill="url(#bfVoidSpotlight)" />
+
+              <!-- Dimensional God-Rays / Light Shafts inside Void -->
+              <g opacity="0.22" fill="#FFF9EF">
+                <polygon points="500,330 180,90 250,70" />
+                <polygon points="500,330 460,65 545,65" />
+                <polygon points="500,330 760,80 830,130" />
+                <polygon points="500,330 885,310 875,390" />
+                <polygon points="500,330 115,305 130,395" />
+              </g>
+
+              <!-- Inner Rim Ambient Occlusion Shadow -->
+              <polygon
+                points="
+                  500,75 568,112 645,92 710,148 795,155 832,225 895,282 858,358
+                  888,432 812,485 758,555 668,548 592,605 500,578 412,608 338,552
+                  242,562 192,492 115,438 148,355 108,278 175,222 212,148 295,142
+                  362,88 438,114
+                "
+                fill="none"
+                stroke="#020804"
+                stroke-width="26"
+                opacity="0.85"
+              />
+            </g>
+
+            <!-- 3D Curled Torn Paper Flaps Peeling Outward Around the Rim -->
+            <!-- Top-Left Curled Flap -->
+            <g class="bf-gb-flap-top-left">
+              <path
+                d="M175 222 L212 148 L295 142 L362 88 L438 114 L385 52 L285 78 L182 112 L122 188 Z"
+                fill="url(#bfPaperFlapTopLeft)"
+                stroke="#D5CBBF"
+                stroke-width="1.5"
+              />
+              <path
+                d="M212 148 L295 142 L362 88 L335 118 L245 132 Z"
+                fill="#B8AEA0"
+                opacity="0.55"
+              />
+            </g>
+
+            <!-- Top-Right Curled Flap -->
+            <g class="bf-gb-flap-top-right">
+              <path
+                d="M568 112 L645 92 L710 148 L795 155 L832 225 L878 172 L815 102 L705 78 L615 48 Z"
+                fill="url(#bfPaperFlapTopRight)"
+                stroke="#D5CBBF"
+                stroke-width="1.5"
+              />
+              <path
+                d="M645 92 L710 148 L795 155 L745 122 L675 88 Z"
+                fill="#ACA293"
+                opacity="0.55"
+              />
+            </g>
+
+            <!-- Bottom-Left Curled Flap -->
+            <g class="bf-gb-flap-bottom-left">
+              <path
+                d="M148 355 L115 438 L192 492 L242 562 L338 552 L412 608 L345 648 L215 612 L128 525 L75 422 Z"
+                fill="url(#bfPaperFlapBottom)"
+                stroke="#D5CBBF"
+                stroke-width="1.5"
+              />
+            </g>
+
+            <!-- Bottom-Right Curled Flap -->
+            <g class="bf-gb-flap-bottom-right">
+              <path
+                d="M858 358 L888 432 L812 485 L758 555 L668 548 L592 605 L665 648 L795 608 L885 518 L928 415 Z"
+                fill="url(#bfPaperFlapBottom)"
+                stroke="#D5CBBF"
+                stroke-width="1.5"
+              />
+            </g>
+          </svg>
+
+          <!-- SCENE 4: 3D EMERGING HARVEST BASKET & INDEPENDENT PRODUCE LAYERS -->
+          <div id="bf-gb-basket-rig" class="bf-gb-basket-rig">
+            <div class="bf-gb-basket-contact-shadow"></div>
+
+            <!-- Layer 1 (Back-Left): Crisp Romaine Lettuce Crown (Depth Z = 55px) -->
+            <div
+              class="bf-gb-produce-item"
+              data-depth-z="55"
+              data-phase="0.4"
+              style="left: 6%; top: 2%; width: 38%; height: 56%; z-index: 20;"
+            >
+              <svg viewBox="0 0 220 220" class="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="bfRomaineOuter" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#52CC7A" />
+                    <stop offset="55%" stop-color="#279447" />
+                    <stop offset="100%" stop-color="#155D35" />
+                  </linearGradient>
+                  <linearGradient id="bfRomaineRib" x1="50%" y1="0%" x2="50%" y2="100%">
+                    <stop offset="0%" stop-color="#E9F9EE" />
+                    <stop offset="100%" stop-color="#8CE0A6" />
+                  </linearGradient>
+                </defs>
+                <g filter="drop-shadow(0 14px 18px rgba(4, 18, 10, 0.52))">
+                  <path
+                    d="M125 200 C55 175, 15 110, 42 52 C68 12, 132 18, 156 68 C192 85, 185 155, 125 200 Z"
+                    fill="url(#bfRomaineOuter)"
+                  />
+                  <path
+                    d="M132 195 C85 162, 65 98, 92 48 C115 18, 168 32, 175 82 C195 115, 172 168, 132 195 Z"
+                    fill="#34A856"
+                  />
+                  <!-- Crisp Central Leaf Ribs -->
+                  <path
+                    d="M126 192 Q96 120 75 55 M130 190 Q125 118 128 52 M102 125 L78 105 M108 98 L85 80 M128 125 L148 102"
+                    stroke="url(#bfRomaineRib)"
+                    stroke-width="4.5"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                </g>
+              </svg>
+            </div>
+
+            <!-- Layer 2 (Back-Right): Bundle of Tapered Nantes Carrots with Feathery Tops (Depth Z = 70px) -->
+            <div
+              class="bf-gb-produce-item"
+              data-depth-z="70"
+              data-phase="1.3"
+              style="right: 5%; top: -4%; width: 38%; height: 62%; z-index: 22;"
+            >
+              <svg viewBox="0 0 240 240" class="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="bfCarrotBody" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#FFB75E" />
+                    <stop offset="45%" stop-color="#F49B38" />
+                    <stop offset="100%" stop-color="#C85A08" />
+                  </linearGradient>
+                </defs>
+                <g filter="drop-shadow(0 16px 20px rgba(4, 18, 10, 0.55))" transform="rotate(18 120 120)">
+                  <!-- Feathery Carrot Greens -->
+                  <path
+                    d="M115 72 C95 30, 62 18, 52 6 M120 72 C118 28, 130 12, 145 4 M126 72 C152 35, 182 28, 198 18 M118 52 L92 28 M124 46 L152 24"
+                    stroke="#279447"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                  <path
+                    d="M112 72 C85 45, 72 32, 68 18 M128 72 C158 48, 175 40, 185 28"
+                    stroke="#48C76E"
+                    stroke-width="3.5"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                  <!-- Carrot 1 -->
+                  <path
+                    d="M92 72 C102 66, 122 66, 130 72 L114 202 C112 212, 104 212, 102 202 Z"
+                    fill="url(#bfCarrotBody)"
+                  />
+                  <!-- Carrot 2 (Overlapping) -->
+                  <path
+                    d="M118 78 C128 72, 148 74, 154 82 L126 208 C123 216, 116 215, 115 206 Z"
+                    fill="url(#bfCarrotBody)"
+                  />
+                  <!-- Organic Root Ridges -->
+                  <path
+                    d="M102 98 H118 M105 124 H116 M128 106 H144 M124 138 H138 M106 156 H114"
+                    stroke="#9E4204"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    opacity="0.55"
+                  />
+                </g>
+              </svg>
+            </div>
+
+            <!-- Layer 3 (Mid-Left): Glossy Red & Golden Bell Peppers (Depth Z = 92px) -->
+            <div
+              class="bf-gb-produce-item"
+              data-depth-z="92"
+              data-phase="2.1"
+              style="left: 14%; top: 14%; width: 32%; height: 48%; z-index: 25;"
+            >
+              <svg viewBox="0 0 200 200" class="w-full h-full overflow-visible">
+                <defs>
+                  <radialGradient id="bfGoldPepper" cx="35%" cy="30%" r="65%">
+                    <stop offset="0%" stop-color="#FFF099" />
+                    <stop offset="45%" stop-color="#F7B731" />
+                    <stop offset="100%" stop-color="#C27803" />
+                  </radialGradient>
+                </defs>
+                <g filter="drop-shadow(0 18px 22px rgba(4, 18, 10, 0.6))" transform="rotate(-14 100 100)">
+                  <!-- Stem -->
+                  <path
+                    d="M96 48 C96 26, 118 20, 124 32 C114 36, 108 42, 108 50 Z"
+                    fill="#279447"
+                  />
+                  <!-- Three-Lobed Bell Pepper Body -->
+                  <path
+                    d="M58 68 C42 68, 34 95, 42 135 C48 162, 72 172, 84 164 C94 174, 112 174, 122 164 C136 172, 158 160, 162 132 C168 92, 156 66, 138 66 C126 56, 72 56, 58 68 Z"
+                    fill="url(#bfGoldPepper)"
+                  />
+                  <!-- Lobe Creases & Specular Highlight -->
+                  <path
+                    d="M80 68 C74 102, 76 138, 84 164 M124 68 C130 102, 128 138, 122 164"
+                    stroke="#B86B02"
+                    stroke-width="2.5"
+                    fill="none"
+                    opacity="0.55"
+                  />
+                  <path
+                    d="M54 86 C48 106, 50 128, 56 142"
+                    stroke="#FFFFFF"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                    fill="none"
+                    opacity="0.65"
+                  />
+                </g>
+              </svg>
+            </div>
+
+            <!-- Layer 4 (Mid-Right): Honeycrisp Apples & Valencia Oranges (Depth Z = 105px) -->
+            <div
+              class="bf-gb-produce-item"
+              data-depth-z="105"
+              data-phase="2.9"
+              style="right: 12%; top: 16%; width: 36%; height: 50%; z-index: 26;"
+            >
+              <svg viewBox="0 0 220 200" class="w-full h-full overflow-visible">
+                <defs>
+                  <radialGradient id="bfAppleGrad" cx="32%" cy="28%" r="68%">
+                    <stop offset="0%" stop-color="#FF9E7D" />
+                    <stop offset="50%" stop-color="#E63946" />
+                    <stop offset="100%" stop-color="#8D0818" />
+                  </radialGradient>
+                  <radialGradient id="bfValenciaGrad" cx="35%" cy="28%" r="68%">
+                    <stop offset="0%" stop-color="#FFE082" />
+                    <stop offset="52%" stop-color="#F49B38" />
+                    <stop offset="100%" stop-color="#BF5700" />
+                  </radialGradient>
+                </defs>
+                <g filter="drop-shadow(0 18px 24px rgba(4, 18, 10, 0.62))">
+                  <!-- Honeycrisp Apple -->
+                  <path
+                    d="M78 58 C52 54, 32 76, 36 112 C40 144, 62 164, 78 158 C86 155, 92 155, 100 158 C116 164, 138 144, 142 112 C146 76, 126 54, 100 58 C92 60, 86 60, 78 58 Z"
+                    fill="url(#bfAppleGrad)"
+                  />
+                  <path d="M89 60 Q92 42 102 36" stroke="#5C3A21" stroke-width="4" stroke-linecap="round" fill="none" />
+                  <path d="M94 46 C108 34, 128 38, 124 52 C112 56, 98 52, 94 46 Z" fill="#279447" />
+                  <!-- Valencia Orange in Foreground Right -->
+                  <circle cx="148" cy="122" r="48" fill="url(#bfValenciaGrad)" />
+                  <!-- Orange Peel Dimples & Highlight -->
+                  <circle cx="132" cy="102" r="1.8" fill="#FFF9EF" opacity="0.7" />
+                  <circle cx="142" cy="96" r="1.5" fill="#FFF9EF" opacity="0.6" />
+                  <circle cx="126" cy="112" r="1.5" fill="#FFF9EF" opacity="0.6" />
+                  <path
+                    d="M116 98 A36 36 0 0 1 146 82"
+                    stroke="#FFFFFF"
+                    stroke-width="4.5"
+                    stroke-linecap="round"
+                    fill="none"
+                    opacity="0.55"
+                  />
+                </g>
+              </svg>
+            </div>
+
+            <!-- Layer 5 (Hero Center-Front): Cluster of Vine-Ripened Heirloom Tomatoes (Depth Z = 135px) -->
+            <div
+              class="bf-gb-produce-item"
+              data-depth-z="135"
+              data-phase="3.7"
+              style="left: 28%; top: 15%; width: 44%; height: 52%; z-index: 30;"
+            >
+              <svg viewBox="0 0 260 210" class="w-full h-full overflow-visible">
+                <defs>
+                  <radialGradient id="bfHeroVineTomato" cx="32%" cy="28%" r="68%">
+                    <stop offset="0%" stop-color="#FF8577" />
+                    <stop offset="42%" stop-color="#E62E25" />
+                    <stop offset="85%" stop-color="#A3120B" />
+                    <stop offset="100%" stop-color="#6B0804" />
+                  </radialGradient>
+                </defs>
+                <g filter="drop-shadow(0 22px 28px rgba(3, 12, 7, 0.68))">
+                  <!-- Left Vine Tomato -->
+                  <ellipse cx="86" cy="118" rx="48" ry="44" fill="url(#bfHeroVineTomato)" />
+                  <!-- Right Vine Tomato -->
+                  <ellipse cx="174" cy="122" rx="46" ry="42" fill="url(#bfHeroVineTomato)" />
+                  <!-- Center Hero Tomato (Closest to Viewer) -->
+                  <ellipse cx="130" cy="134" rx="54" ry="50" fill="url(#bfHeroVineTomato)" />
+
+                  <!-- Organic Green Vine & Star Calyxes -->
+                  <path
+                    d="M65 68 Q130 52 195 72"
+                    stroke="#279447"
+                    stroke-width="5.5"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                  <!-- Center Calyx -->
+                  <path
+                    d="M130 82 L112 96 M130 82 L148 96 M130 82 L106 84 M130 82 L154 84 M130 82 L130 102 M130 62 L130 84"
+                    stroke="#279447"
+                    stroke-width="4.5"
+                    stroke-linecap="round"
+                  />
+                  <!-- Specular Gloss Curves & Dewdrops -->
+                  <path
+                    d="M96 108 A38 34 0 0 1 124 94"
+                    stroke="#FFFFFF"
+                    stroke-width="5"
+                    stroke-linecap="round"
+                    fill="none"
+                    opacity="0.72"
+                  />
+                  <circle cx="152" cy="144" r="3.2" fill="#FFFFFF" opacity="0.82" />
+                  <circle cx="72" cy="102" r="2.5" fill="#FFFFFF" opacity="0.75" />
+                </g>
+              </svg>
+            </div>
+
+            <!-- Layer 6 (Foreground Anchor): Artisanal Woven Wicker Grocery Basket (Depth Z = 120px) -->
+            <div
+              class="bf-gb-produce-item"
+              data-depth-z="120"
+              data-phase="0.0"
+              style="left: 10%; bottom: -2%; width: 80%; height: 64%; z-index: 29;"
+            >
+              <svg viewBox="0 0 520 260" class="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="bfWickerMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#E6B17E" />
+                    <stop offset="45%" stop-color="#C67D3B" />
+                    <stop offset="85%" stop-color="#8C4F1E" />
+                    <stop offset="100%" stop-color="#593010" />
+                  </linearGradient>
+                  <linearGradient id="bfWickerRim" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#F3C89B" />
+                    <stop offset="55%" stop-color="#C67D3B" />
+                    <stop offset="100%" stop-color="#6E3B14" />
+                  </linearGradient>
+                </defs>
+                <g filter="drop-shadow(0 28px 34px rgba(2, 10, 5, 0.78))">
+                  <!-- Basket Body Tapered Trapezoid with 3D Curvature -->
+                  <path
+                    d="M68 62 L452 62 L408 214 C400 234, 378 244, 352 244 L168 244 C142 244, 120 234, 112 214 Z"
+                    fill="url(#bfWickerMain)"
+                  />
+
+                  <!-- Woven Wicker Horizontal Ribs -->
+                  <path
+                    d="M84 102 Q260 120 436 102 M94 138 Q260 156 426 138 M104 174 Q260 192 416 174 M114 208 Q260 224 406 208"
+                    stroke="#593010"
+                    stroke-width="4"
+                    fill="none"
+                    opacity="0.62"
+                  />
+                  <path
+                    d="M86 110 Q260 128 434 110 M96 146 Q260 164 424 146 M106 182 Q260 200 414 182"
+                    stroke="#F5CBA2"
+                    stroke-width="2.5"
+                    fill="none"
+                    opacity="0.48"
+                  />
+
+                  <!-- Woven Vertical Staves -->
+                  <path
+                    d="M135 68 L155 240 M185 68 L196 242 M235 68 L238 244 M285 68 L282 244 M335 68 L324 242 M385 68 L365 240"
+                    stroke="#593010"
+                    stroke-width="4.5"
+                    stroke-linecap="round"
+                    opacity="0.55"
+                  />
+
+                  <!-- Braided Top Rim Collar -->
+                  <path
+                    d="M52 54 C52 40, 468 40, 468 54 C468 72, 52 72, 52 54 Z"
+                    fill="url(#bfWickerRim)"
+                    stroke="#593010"
+                    stroke-width="2.5"
+                  />
+
+                  <!-- Side Rope / Wicker Handles -->
+                  <path
+                    d="M64 56 C28 52, 26 96, 78 96"
+                    stroke="url(#bfWickerRim)"
+                    stroke-width="11"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                  <path
+                    d="M456 56 C492 52, 494 96, 442 96"
+                    stroke="url(#bfWickerRim)"
+                    stroke-width="11"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+
+                  <!-- Natural Linen Farmart Badge Woven on Basket Front -->
+                  <rect
+                    x="195"
+                    y="124"
+                    width="130"
+                    height="52"
+                    rx="8"
+                    fill="#FFF9EF"
+                    stroke="#8C4F1E"
+                    stroke-width="2"
+                  />
+                  <text
+                    x="260"
+                    y="148"
+                    text-anchor="middle"
+                    fill="#155D35"
+                    font-family="Fraunces, Georgia, serif"
+                    font-weight="700"
+                    font-size="16"
+                  >
+                    Farmart
+                  </text>
+                  <text
+                    x="260"
+                    y="165"
+                    text-anchor="middle"
+                    fill="#279447"
+                    font-family="Plus Jakarta Sans, sans-serif"
+                    font-weight="600"
+                    font-size="9"
+                    letter-spacing="1.4"
+                  >
+                    ORGANIC HARVEST
+                  </text>
+                </g>
+              </svg>
+            </div>
+
+            <!-- Layer 7 (Extreme Foreground Outward Floating Botanicals — Depth Z = 175px) -->
+            <div
+              class="bf-gb-produce-item"
+              data-depth-z="175"
+              data-phase="1.8"
+              style="left: -2%; bottom: 18%; width: 22%; height: 28%; z-index: 35;"
+            >
+              <svg viewBox="0 0 120 120" class="w-full h-full overflow-visible">
+                <g filter="drop-shadow(0 24px 24px rgba(0, 0, 0, 0.65))" transform="rotate(-28 60 60)">
+                  <path
+                    d="M20 95 C18 48, 52 18, 98 22 C92 68, 62 96, 20 95 Z"
+                    fill="#279447"
+                  />
+                  <path
+                    d="M20 95 Q56 56 96 24 M45 72 L32 52 M64 54 L52 36"
+                    stroke="#A3F0BA"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                  <circle cx="68" cy="48" r="3.5" fill="#FFFFFF" opacity="0.85" />
+                </g>
+              </svg>
+            </div>
+
+            <div
+              class="bf-gb-produce-item"
+              data-depth-z="180"
+              data-phase="4.5"
+              style="right: -2%; bottom: 22%; width: 22%; height: 28%; z-index: 35;"
+            >
+              <svg viewBox="0 0 120 120" class="w-full h-full overflow-visible">
+                <g filter="drop-shadow(0 24px 24px rgba(0, 0, 0, 0.65))" transform="rotate(24 60 60)">
+                  <!-- Cherry Tomato & Basil Leaf Breaking Toward Viewer -->
+                  <path
+                    d="M25 80 C25 42, 58 20, 95 28 C88 64, 58 85, 25 80 Z"
+                    fill="#34A856"
+                  />
+                  <circle cx="54" cy="68" r="24" fill="url(#bfHeroVineTomato)" />
+                  <circle cx="46" cy="58" r="3.5" fill="#FFFFFF" opacity="0.82" />
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <!-- SCENE 5 & 6: PROMOTIONAL REVEAL LOCKUP -->
+          <div id="bf-gb-promo-panel" class="bf-gb-promo-panel">
+            <div
+              id="bf-gb-promo-offer"
+              class="text-xs font-bold tracking-widest text-[#F49B38] uppercase"
+            >
+              SPECIAL EVENT — LIMITED TIME
+            </div>
+
+            <h2
+              id="bf-gb-promo-headline"
+              class="bf-font-display text-2xl sm:text-4xl font-extrabold text-[#FFF9EF] tracking-tight mt-1.5 leading-tight"
+            >
+              FRESHNESS IS BREAKING THROUGH!
+            </h2>
+
+            <p
+              id="bf-gb-promo-subheadline"
+              class="text-xs sm:text-base text-[#FFF9EF]/85 mt-2 max-w-xl mx-auto leading-relaxed"
+            >
+              Celebrate our Special Farm Fresh Event with incredible grocery experiences.
+            </p>
+
+            <div class="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+              <a
+                id="bf-gb-primary-cta"
+                href="#special-event-showcase"
+                class="px-6 py-3 rounded-xl text-xs sm:text-sm font-bold bg-[#F49B38] text-[#132A1C] hover:bg-[#ffc078] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-md text-center"
+              >
+                EXPLORE THE EVENT
+              </a>
+              <a
+                id="bf-gb-secondary-cta"
+                href="#farm-fresh-catalog"
+                class="px-6 py-3 rounded-xl text-xs sm:text-sm font-bold bg-[#279447] text-white hover:bg-[#32b558] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-md text-center"
+              >
+                SHOP FRESH PRODUCTS
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         SECTION 3: SELF-CONTAINED JAVASCRIPT ENGINE
+         (Copy into Botble Admin -> Appearance -> Custom JS)
+         Wrapped in window.BotbleFarmartBreakout namespace to avoid global conflicts.
+         ===================================================================== -->
+    <script id="bf-great-breakout-script">
+      (function () {
+        'use strict';
+
+        /* ===================================================================
+           1. EDITABLE CONFIGURATION OBJECT
+           Modify these settings directly to customize timing, copy, URLs,
+           sound defaults, and mobile adjustments for Botble Farmart Laravel.
+           =================================================================== */
+        var BREAKOUT_CONFIG = {
+          // Automatic trigger delay in milliseconds after page load (set to 0 to disable auto-trigger)
+          autoTriggerDelayMs: 2600,
+
+          // Editable Promotional Copy (Required exact defaults)
+          headline: 'FRESHNESS IS BREAKING THROUGH!',
+          subheadline: 'Celebrate our Special Farm Fresh Event with incredible grocery experiences.',
+          offerText: 'SPECIAL EVENT — LIMITED TIME',
+
+          // Editable CTA Button Labels & Destination URLs
+          primaryCtaLabel: 'EXPLORE THE EVENT',
+          primaryCtaUrl: '#special-event-showcase',
+          secondaryCtaLabel: 'SHOP FRESH PRODUCTS',
+          secondaryCtaUrl: '#farm-fresh-catalog',
+
+          // Animation speed multiplier (1.0 = normal cinematic timing)
+          animationDurationScale: 1.0,
+
+          // Sound preference (disabled by default per best practices)
+          soundEnabledByDefault: false,
+
+          // Mobile-specific animation settings
+          mobileBreakpointPx: 768,
+          mobileScaleFactor: 0.84,
+          mobileParticleCount: 14,
+          desktopParticleCount: 28
+        };
+
+        /* ===================================================================
+           2. FARMART DEMO STOREFRONT CATALOG DATA & SVG ARTWORK
+           =================================================================== */
+        var STORE_PRODUCTS = [
+          {
+            id: 'heirloom-tomatoes',
+            name: 'Vine-Ripened Heirloom Tomatoes',
+            category: 'vegetables',
+            categoryLabel: 'Vegetables',
+            unit: '500g Cluster',
+            price: 4.8,
+            origin: 'Sonoma Valley Farm',
+            featuredInEvent: true,
+            svgType: 'tomatoes'
+          },
+          {
+            id: 'romaine-lettuce',
+            name: 'Crisp Organic Romaine Hearts',
+            category: 'vegetables',
+            categoryLabel: 'Vegetables',
+            unit: '2-Crown Pack',
+            price: 3.4,
+            origin: 'Salinas Valley',
+            featuredInEvent: true,
+            svgType: 'lettuce'
+          },
+          {
+            id: 'nantes-carrots',
+            name: 'Sweet Nantes Carrots with Tops',
+            category: 'vegetables',
+            categoryLabel: 'Vegetables',
+            unit: '750g Bunch',
+            price: 3.9,
+            origin: 'Riverbend Organics',
+            featuredInEvent: true,
+            svgType: 'carrots'
+          },
+          {
+            id: 'bell-peppers',
+            name: 'Sun-Sweet Golden & Red Peppers',
+            category: 'vegetables',
+            categoryLabel: 'Vegetables',
+            unit: '3-Pod Trio',
+            price: 5.2,
+            origin: 'Coastal Greenhouse',
+            featuredInEvent: true,
+            svgType: 'peppers'
+          },
+          {
+            id: 'honeycrisp-apples',
+            name: 'Orchard Honeycrisp Apples',
+            category: 'fruits',
+            categoryLabel: 'Orchard Fruits',
+            unit: '1kg Tote',
+            price: 6.4,
+            origin: 'Yakima Ridge Orchard',
+            featuredInEvent: true,
+            svgType: 'apples'
+          },
+          {
+            id: 'valencia-oranges',
+            name: 'Sun-Sweet Valencia Oranges',
+            category: 'fruits',
+            categoryLabel: 'Orchard Fruits',
+            unit: '1.5kg Net Bag',
+            price: 6.5,
+            origin: 'Groves of Ojai',
+            featuredInEvent: true,
+            svgType: 'oranges'
+          },
+          {
+            id: 'harvest-basket',
+            name: 'Grand Organic Family Harvest Basket',
+            category: 'baskets',
+            categoryLabel: 'Harvest Baskets',
+            unit: '6.5kg Curated Wicker Crate',
+            price: 34.5,
+            origin: 'Farmart Signature Selection',
+            featuredInEvent: true,
+            svgType: 'basket'
+          },
+          {
+            id: 'citrus-herb-box',
+            name: 'Seasonal Citrus & Culinary Herb Box',
+            category: 'baskets',
+            categoryLabel: 'Harvest Baskets',
+            unit: '3.2kg Gift Box',
+            price: 22.0,
+            origin: 'Artisanal Growers Co-op',
+            featuredInEvent: false,
+            svgType: 'citrusbox'
+          }
+        ];
+
+        function renderProductCardSvg(type) {
+          switch (type) {
+            case 'tomatoes':
+              return '<svg viewBox="0 0 160 120" class="w-full h-full"><circle cx="62" cy="68" r="30" fill="#E63926"/><circle cx="98" cy="70" r="28" fill="#D62818"/><circle cx="80" cy="76" r="32" fill="#F04432"/><path d="M58 38 Q80 30 104 40 M80 42 L72 52 M80 42 L88 52" stroke="#279447" stroke-width="3.5" stroke-linecap="round" fill="none"/><circle cx="70" cy="64" r="3" fill="#FFF" opacity="0.7"/></svg>';
+            case 'lettuce':
+              return '<svg viewBox="0 0 160 120" class="w-full h-full"><path d="M80 105 C45 92, 32 52, 50 24 C66 6, 98 10, 108 38 C126 52, 115 90, 80 105 Z" fill="#279447"/><path d="M82 102 C62 84, 58 48, 72 26 C86 12, 110 22, 112 52 C120 72, 105 94, 82 102 Z" fill="#3DB860"/><path d="M80 98 Q72 62 64 30 M82 98 Q86 60 88 28" stroke="#D8F8E1" stroke-width="3.5" stroke-linecap="round" fill="none"/></svg>';
+            case 'carrots':
+              return '<svg viewBox="0 0 160 120" class="w-full h-full"><g transform="rotate(22 80 60)"><path d="M72 32 C60 12, 48 8, 42 2 M78 32 C78 10, 86 4, 94 0 M84 32 C98 14, 110 12, 118 6" stroke="#279447" stroke-width="3.5" stroke-linecap="round" fill="none"/><path d="M64 32 L84 32 L76 104 C75 108, 71 108, 70 104 Z" fill="#F49B38"/><path d="M80 36 L98 38 L86 106 C85 110, 81 110, 80 106 Z" fill="#E07A16"/></g></svg>';
+            case 'peppers':
+              return '<svg viewBox="0 0 160 120" class="w-full h-full"><path d="M56 36 C44 36, 38 56, 44 82 C48 98, 68 98, 76 82 C82 56, 72 36, 56 36 Z" fill="#E63926"/><path d="M86 40 C74 40, 68 60, 74 88 C78 102, 104 102, 110 88 C116 60, 104 40, 86 40 Z" fill="#F49B38"/><path d="M58 36 Q62 24 68 24 M92 40 Q96 26 104 26" stroke="#279447" stroke-width="4" stroke-linecap="round" fill="none"/></svg>';
+            case 'apples':
+              return '<svg viewBox="0 0 160 120" class="w-full h-full"><path d="M68 36 C50 34, 38 50, 42 74 C45 94, 62 104, 74 98 C80 96, 84 96, 90 98 C102 104, 118 94, 120 74 C124 50, 112 34, 94 36 C86 38, 76 38, 68 36 Z" fill="#E63946"/><path d="M80 38 Q82 24 90 20" stroke="#5C3A21" stroke-width="3.5" stroke-linecap="round" fill="none"/><path d="M84 26 C94 18, 108 20, 106 30 C96 34, 88 30, 84 26 Z" fill="#279447"/></svg>';
+            case 'oranges':
+              return '<svg viewBox="0 0 160 120" class="w-full h-full"><circle cx="68" cy="66" r="32" fill="#F49B38"/><circle cx="98" cy="70" r="28" fill="#FFA94D"/><path d="M68 34 C78 24, 92 26, 90 36 C80 40, 72 38, 68 34 Z" fill="#279447"/><circle cx="56" cy="54" r="2" fill="#FFF" opacity="0.7"/></svg>';
+            case 'basket':
+              return '<svg viewBox="0 0 160 120" class="w-full h-full"><circle cx="64" cy="54" r="18" fill="#E63926"/><circle cx="96" cy="54" r="18" fill="#F49B38"/><path d="M50 56 C46 32, 74 24, 84 44 C96 26, 116 36, 110 56 Z" fill="#279447"/><path d="M34 56 L126 56 L114 96 L46 96 Z" fill="#C67D3B"/><rect x="30" y="50" width="100" height="8" rx="4" fill="#E6B17E"/></svg>';
+            default:
+              return '<svg viewBox="0 0 160 120" class="w-full h-full"><rect x="38" y="52" width="84" height="46" rx="6" fill="#DDA15E"/><circle cx="64" cy="48" r="18" fill="#F49B38"/><circle cx="94" cy="50" r="16" fill="#FFD166"/><path d="M72 46 C72 26, 98 22, 104 42 Z" fill="#279447"/></svg>';
+          }
+        }
+
+        /* ===================================================================
+           3. STATE MACHINE & PURE TIMING HELPERS
+           =================================================================== */
+        var state = {
+          scene: 'normal', // 'normal' | 'disturbance' | 'tearing' | 'breakout' | 'reveal' | 'closing'
+          isActive: false,
+          soundEnabled: Boolean(BREAKOUT_CONFIG.soundEnabledByDefault),
+          activeCategory: 'all',
+          searchQuery: '',
+          cart: {
+            'heirloom-tomatoes': 2,
+            'valencia-oranges': 1,
+            'romaine-lettuce': 0
+          },
+          pointerX: 0,
+          pointerY: 0,
+          rafId: null,
+          sceneTimeouts: [],
+          autoTriggerTimeout: null,
+          particles: [],
+          audioCtx: null
+        };
+
+        // Initialize cart so header shows 2 items ($16.10 -> let's match 1 heirloom-tomatoes + 1 valencia-oranges + 2 romaine = $18.10 or 1 heirloom + 2 oranges = $17.80; let's set 1 tomato ($4.80) + 1 clementine/basket or 3 romaine ($13.50) -> let's compute dynamically on boot!)
+        state.cart = {
+          'heirloom-tomatoes': 1,
+          'valencia-oranges': 2
+        };
+
+        function prefersReducedMotion() {
+          return (
+            window.matchMedia &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          );
+        }
+
+        function isMobileViewport() {
+          return window.innerWidth <= BREAKOUT_CONFIG.mobileBreakpointPx;
+        }
+
+        function computeTimings() {
+          var scale = Math.max(
+            0.25,
+            Math.min(3.0, Number(BREAKOUT_CONFIG.animationDurationScale) || 1.0)
+          );
+          if (prefersReducedMotion()) {
+            return {
+              disturbanceStartMs: 0,
+              tearingStartMs: 80,
+              breakoutStartMs: 180,
+              revealStartMs: 320
+            };
+          }
+          return {
+            disturbanceStartMs: 0,
+            tearingStartMs: Math.round(480 * scale),
+            breakoutStartMs: Math.round(1320 * scale),
+            revealStartMs: Math.round(2250 * scale)
+          };
+        }
+
+        /* ===================================================================
+           4. PROCEDURAL WEB AUDIO SOUND SYNTHESIZER (Optional, Off by Default)
+           Generates realistic paper-tear fiber rip & fresh botanical chime
+           using Web Audio API without external MP3 dependencies.
+           =================================================================== */
+        function playProceduralSound(effectType) {
+          if (!state.soundEnabled) return;
+          try {
+            var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            if (!state.audioCtx) {
+              state.audioCtx = new AudioContextClass();
+            }
+            var ctx = state.audioCtx;
+            if (ctx.state === 'suspended') {
+              ctx.resume();
+            }
+
+            var now = ctx.currentTime;
+            if (effectType === 'disturbance') {
+              // Subtle low rumble tension
+              var osc = ctx.createOscillator();
+              var gain = ctx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(68, now);
+              osc.frequency.exponentialRampToValueAtTime(42, now + 0.35);
+              gain.gain.setValueAtTime(0.08, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.4);
+            } else if (effectType === 'tear') {
+              // Filtered white-noise burst simulating crisp paper tearing
+              var bufferSize = ctx.sampleRate * 0.65;
+              var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+              var data = buffer.getChannelData(0);
+              for (var i = 0; i < bufferSize; i++) {
+                var env = Math.sin((i / bufferSize) * Math.PI);
+                data[i] = (Math.random() * 2 - 1) * env;
+              }
+              var noise = ctx.createBufferSource();
+              noise.buffer = buffer;
+
+              var filter = ctx.createBiquadFilter();
+              filter.type = 'bandpass';
+              filter.frequency.setValueAtTime(900, now);
+              filter.frequency.linearRampToValueAtTime(2400, now + 0.55);
+              filter.Q.value = 1.8;
+
+              var tearGain = ctx.createGain();
+              tearGain.gain.setValueAtTime(0.18, now);
+              tearGain.gain.exponentialRampToValueAtTime(0.01, now + 0.62);
+
+              noise.connect(filter);
+              filter.connect(tearGain);
+              tearGain.connect(ctx.destination);
+              noise.start(now);
+            } else if (effectType === 'reveal') {
+              // Warm harmonic chord chime
+              var freqs = [523.25, 659.25, 783.99];
+              freqs.forEach(function (f, idx) {
+                var o = ctx.createOscillator();
+                var g = ctx.createGain();
+                o.type = 'sine';
+                o.frequency.setValueAtTime(f, now + idx * 0.06);
+                g.gain.setValueAtTime(0.06, now + idx * 0.06);
+                g.gain.exponentialRampToValueAtTime(0.001, now + 0.7 + idx * 0.06);
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.start(now + idx * 0.06);
+                o.stop(now + 0.75 + idx * 0.06);
+              });
+            }
+          } catch (_err) {
+            // Ignore audio autoplay blocks gracefully
+          }
+        }
+
+        /* ===================================================================
+           5. PROCEDURAL CANVAS PARTICLE ENGINE (Fresh Leaves, Dewdrops, Motes)
+           =================================================================== */
+        var canvasEl = document.getElementById('bf-gb-particle-canvas');
+        var ctx2d = canvasEl ? canvasEl.getContext('2d') : null;
+
+        function resizeCanvas() {
+          if (!canvasEl) return;
+          canvasEl.width = window.innerWidth;
+          canvasEl.height = window.innerHeight;
+        }
+
+        function spawnParticles() {
+          resizeCanvas();
+          var count = isMobileViewport()
+            ? BREAKOUT_CONFIG.mobileParticleCount
+            : BREAKOUT_CONFIG.desktopParticleCount;
+          var cx = window.innerWidth * 0.5;
+          var cy = window.innerHeight * 0.44;
+          state.particles = [];
+
+          for (var i = 0; i < count; i++) {
+            var angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.35;
+            var speed = 1.6 + Math.random() * 3.8;
+            var kind = i % 3 === 0 ? 'leaf' : i % 3 === 1 ? 'dew' : 'pollen';
+            state.particles.push({
+              x: cx + (Math.random() - 0.5) * 90,
+              y: cy + (Math.random() - 0.5) * 70,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed - 0.8,
+              size: kind === 'leaf' ? 9 + Math.random() * 7 : 3 + Math.random() * 4,
+              rot: Math.random() * Math.PI * 2,
+              vRot: (Math.random() - 0.5) * 0.04,
+              alpha: 0.85,
+              kind: kind
+            });
+          }
+        }
+
+        /* ===================================================================
+           6. 3D PARALLAX & FRAME LOOP (Bounded burst + on-demand pointer tilt)
+           =================================================================== */
+        var produceNodes = Array.prototype.slice.call(
+          document.querySelectorAll('.bf-gb-produce-item')
+        );
+        var basketRigEl = document.getElementById('bf-gb-basket-rig');
+        var burstStartTimestamp = 0;
+
+        function update3DSceneTransforms(t) {
+          var mobile = isMobileViewport();
+          var mobileMult = mobile ? 0.55 : 1.0;
+          var rigScale = mobile ? BREAKOUT_CONFIG.mobileScaleFactor : 1.0;
+
+          if (
+            basketRigEl &&
+            (state.scene === 'breakout' || state.scene === 'reveal')
+          ) {
+            var rigTx = (state.pointerX * 16 * mobileMult).toFixed(2);
+            var rigTy = (-6 + state.pointerY * 12 * mobileMult + Math.sin(t) * 3.5).toFixed(2);
+            var rigRx = (-state.pointerY * 7 * mobileMult).toFixed(2);
+            var rigRy = (state.pointerX * 10 * mobileMult).toFixed(2);
+
+            basketRigEl.style.setProperty('--bf-rig-tx', rigTx + 'px');
+            basketRigEl.style.setProperty('--bf-rig-ty', rigTy + 'px');
+            basketRigEl.style.setProperty('--bf-rig-tz', (mobile ? 75 : 115) + 'px');
+            basketRigEl.style.setProperty('--bf-rig-scale', String(rigScale));
+            basketRigEl.style.setProperty('--bf-rig-rx', rigRx + 'deg');
+            basketRigEl.style.setProperty('--bf-rig-ry', rigRy + 'deg');
+          }
+
+          if (state.scene === 'breakout' || state.scene === 'reveal') {
+            for (var i = 0; i < produceNodes.length; i++) {
+              var node = produceNodes[i];
+              var depthZ = parseFloat(node.getAttribute('data-depth-z') || '90');
+              var phase = parseFloat(node.getAttribute('data-phase') || '0');
+              var depthRatio = depthZ / 100;
+
+              var floatY = Math.sin(t * 1.3 + phase) * 5 * mobileMult;
+              var floatRotZ = Math.cos(t * 1.1 + phase) * 3.0;
+              var tx = (state.pointerX * 22 * depthRatio * mobileMult).toFixed(2);
+              var ty = (state.pointerY * 16 * depthRatio * mobileMult + floatY).toFixed(2);
+              var tz = (depthZ * mobileMult).toFixed(1);
+
+              node.style.transform =
+                'translate3d(' +
+                tx +
+                'px, ' +
+                ty +
+                'px, ' +
+                tz +
+                'px) rotateZ(' +
+                floatRotZ.toFixed(2) +
+                'deg)';
+            }
+          }
+        }
+
+        function drawSettledParticles(t, stepPhysics) {
+          if (!ctx2d || !canvasEl) return;
+          ctx2d.clearRect(0, 0, canvasEl.width, canvasEl.height);
+          for (var pIdx = 0; pIdx < state.particles.length; pIdx++) {
+            var p = state.particles[pIdx];
+            if (stepPhysics) {
+              p.x += p.vx;
+              p.y += p.vy;
+              p.vx *= 0.975;
+              p.vy *= 0.975;
+              p.rot += p.vRot;
+              p.y += Math.sin(t + pIdx) * 0.22;
+            }
+
+            ctx2d.save();
+            ctx2d.translate(p.x + state.pointerX * 10, p.y + state.pointerY * 10);
+            ctx2d.rotate(p.rot);
+            ctx2d.globalAlpha = p.alpha;
+
+            if (p.kind === 'leaf') {
+              ctx2d.fillStyle = '#38B861';
+              ctx2d.beginPath();
+              ctx2d.ellipse(0, 0, p.size, p.size * 0.52, 0, 0, Math.PI * 2);
+              ctx2d.fill();
+            } else if (p.kind === 'dew') {
+              ctx2d.fillStyle = 'rgba(255, 255, 255, 0.85)';
+              ctx2d.beginPath();
+              ctx2d.arc(0, 0, p.size * 0.7, 0, Math.PI * 2);
+              ctx2d.fill();
+            } else {
+              ctx2d.fillStyle = '#F49B38';
+              ctx2d.beginPath();
+              ctx2d.arc(0, 0, p.size * 0.55, 0, Math.PI * 2);
+              ctx2d.fill();
+            }
+            ctx2d.restore();
+          }
+        }
+
+        function renderFrame(timestamp) {
+          if (!state.isActive) {
+            state.rafId = null;
+            return;
+          }
+
+          if (!burstStartTimestamp) {
+            burstStartTimestamp = timestamp || performance.now();
+          }
+          var elapsedBurst = (timestamp || performance.now()) - burstStartTimestamp;
+          var t = (timestamp || 0) * 0.0018;
+
+          update3DSceneTransforms(t);
+          drawSettledParticles(t, true);
+
+          // Run continuous 60fps burst for 2200ms during emergence, then switch to on-demand pointer parallax
+          if (elapsedBurst < 2200) {
+            state.rafId = window.requestAnimationFrame(renderFrame);
+          } else {
+            state.rafId = null;
+          }
+        }
+
+        /* ===================================================================
+           7. CHOREOGRAPHED 6-SCENE SEQUENCE CONTROLLER
+           =================================================================== */
+        var overlayEl = document.getElementById('bf-gb-overlay');
+        var tearSvgEl = document.getElementById('bf-gb-tear-svg');
+        var storefrontWrapperEl = document.getElementById('bf-storefront-wrapper');
+        var statusLabelEl = document.getElementById('bf-demo-status-label');
+
+        function clearScheduledTimers() {
+          while (state.sceneTimeouts.length > 0) {
+            window.clearTimeout(state.sceneTimeouts.pop());
+          }
+          if (state.autoTriggerTimeout) {
+            window.clearTimeout(state.autoTriggerTimeout);
+            state.autoTriggerTimeout = null;
+          }
+        }
+
+        function setStatusText(text) {
+          if (statusLabelEl) {
+            statusLabelEl.textContent = text;
+          }
+        }
+
+        function updateSceneClasses(sceneName) {
+          state.scene = sceneName;
+          document.body.setAttribute('data-breakout-scene', sceneName);
+          if (!overlayEl) return;
+
+          overlayEl.classList.remove(
+            'bf-gb-scene-disturbance',
+            'bf-gb-scene-tearing',
+            'bf-gb-scene-breakout',
+            'bf-gb-scene-reveal',
+            'bf-gb-closing'
+          );
+
+          if (sceneName !== 'normal' && sceneName !== 'closing') {
+            overlayEl.classList.add('bf-gb-scene-' + sceneName);
+          }
+        }
+
+        function applyPromotionalConfigToDom() {
+          var headlineEl = document.getElementById('bf-gb-promo-headline');
+          var subheadlineEl = document.getElementById('bf-gb-promo-subheadline');
+          var offerEl = document.getElementById('bf-gb-promo-offer');
+          var primaryCtaEl = document.getElementById('bf-gb-primary-cta');
+          var secondaryCtaEl = document.getElementById('bf-gb-secondary-cta');
+
+          if (headlineEl) headlineEl.textContent = BREAKOUT_CONFIG.headline;
+          if (subheadlineEl) subheadlineEl.textContent = BREAKOUT_CONFIG.subheadline;
+          if (offerEl) offerEl.textContent = BREAKOUT_CONFIG.offerText;
+          if (primaryCtaEl) {
+            primaryCtaEl.textContent = BREAKOUT_CONFIG.primaryCtaLabel;
+            primaryCtaEl.setAttribute('href', BREAKOUT_CONFIG.primaryCtaUrl);
+          }
+          if (secondaryCtaEl) {
+            secondaryCtaEl.textContent = BREAKOUT_CONFIG.secondaryCtaLabel;
+            secondaryCtaEl.setAttribute('href', BREAKOUT_CONFIG.secondaryCtaUrl);
+          }
+        }
+
+        function startBreakoutSequence() {
+          clearScheduledTimers();
+          applyPromotionalConfigToDom();
+
+          state.isActive = true;
+          var timings = computeTimings();
+
+          // Lock background page scroll & accidental interaction while active
+          document.body.style.overflow = 'hidden';
+          if (overlayEl) {
+            overlayEl.classList.add('bf-gb-active');
+            overlayEl.setAttribute('aria-hidden', 'false');
+          }
+
+          // Reset tear & produce initial positions before animating
+          if (tearSvgEl) {
+            tearSvgEl.style.setProperty('--bf-tear-scale', '0.06');
+            tearSvgEl.style.setProperty('--bf-tear-opacity', '0');
+          }
+          for (var i = 0; i < produceNodes.length; i++) {
+            produceNodes[i].style.transform = 'translate3d(0, 40px, -120px) scale(0.35)';
+          }
+
+          // SCENE 2: Initial Disturbance (Vibration & Hairline Crack)
+          updateSceneClasses('disturbance');
+          setStatusText('Scene 2: Initial Surface Disturbance');
+          if (storefrontWrapperEl && !prefersReducedMotion()) {
+            storefrontWrapperEl.classList.add('bf-gb-disturbance-shake');
+          }
+          playProceduralSound('disturbance');
+
+          // SCENE 3: Progressive Screen Tearing
+          state.sceneTimeouts.push(
+            window.setTimeout(function () {
+              if (storefrontWrapperEl) {
+                storefrontWrapperEl.classList.remove('bf-gb-disturbance-shake');
+              }
+              updateSceneClasses('tearing');
+              setStatusText('Scene 3: Progressive Screen Tearing');
+              if (tearSvgEl) {
+                tearSvgEl.style.setProperty('--bf-tear-scale', '1');
+                tearSvgEl.style.setProperty('--bf-tear-opacity', '1');
+              }
+              playProceduralSound('tear');
+            }, timings.tearingStartMs)
+          );
+
+          // SCENE 4: 3D Basket & Independent Produce Breakout
+          state.sceneTimeouts.push(
+            window.setTimeout(function () {
+              updateSceneClasses('breakout');
+              setStatusText('Scene 4: 3D Farm Fresh Basket Breakout');
+              spawnParticles();
+              burstStartTimestamp = 0;
+              if (state.rafId) {
+                window.cancelAnimationFrame(state.rafId);
+              }
+              state.rafId = window.requestAnimationFrame(renderFrame);
+            }, timings.breakoutStartMs)
+          );
+
+          // SCENE 5 & 6: Promotional Reveal & Final Interactive Composition
+          state.sceneTimeouts.push(
+            window.setTimeout(function () {
+              updateSceneClasses('reveal');
+              setStatusText('Scene 5 & 6: Promotional Reveal (Interactive 3D)');
+              playProceduralSound('reveal');
+              update3DSceneTransforms(1.5);
+            }, timings.revealStartMs)
+          );
+        }
+
+        function closeBreakoutSequence() {
+          clearScheduledTimers();
+          state.isActive = false;
+          if (state.rafId) {
+            window.cancelAnimationFrame(state.rafId);
+            state.rafId = null;
+          }
+          if (storefrontWrapperEl) {
+            storefrontWrapperEl.classList.remove('bf-gb-disturbance-shake');
+          }
+          if (overlayEl) {
+            overlayEl.classList.add('bf-gb-closing');
+            overlayEl.classList.remove('bf-gb-active');
+            overlayEl.setAttribute('aria-hidden', 'true');
+          }
+
+          // Restore normal website interaction and scrolling immediately
+          document.body.style.overflow = '';
+          updateSceneClasses('normal');
+          setStatusText('Scene 1: Normal Storefront (Ready to Replay)');
+
+          if (ctx2d && canvasEl) {
+            ctx2d.clearRect(0, 0, canvasEl.width, canvasEl.height);
+          }
+        }
+
+        /* ===================================================================
+           8. STOREFRONT CATALOG, FILTERING & CART LOGIC
+           =================================================================== */
+        function renderCatalog() {
+          var gridEl = document.getElementById('bf-product-grid');
+          var searchStatusBar = document.getElementById('bf-search-status-bar');
+          var searchStatusText = document.getElementById('bf-search-status-text');
+          if (!gridEl) return;
+
+          var cat = state.activeCategory;
+          var q = state.searchQuery.trim().toLowerCase();
+
+          var filtered = STORE_PRODUCTS.filter(function (item) {
+            var matchCat =
+              cat === 'all' ||
+              (cat === 'event' ? Boolean(item.featuredInEvent) : item.category === cat);
+            var matchQuery =
+              !q ||
+              item.name.toLowerCase().indexOf(q) !== -1 ||
+              item.origin.toLowerCase().indexOf(q) !== -1 ||
+              item.categoryLabel.toLowerCase().indexOf(q) !== -1;
+            return matchCat && matchQuery;
+          });
+
+          if (searchStatusBar && searchStatusText) {
+            if (q || cat !== 'all') {
+              searchStatusBar.classList.remove('hidden');
+              searchStatusText.textContent =
+                'Showing ' +
+                filtered.length +
+                ' farm-fresh item(s)' +
+                (cat !== 'all' ? ' in "' + cat + '"' : '') +
+                (q ? ' matching "' + state.searchQuery + '"' : '');
+            } else {
+              searchStatusBar.classList.add('hidden');
+            }
+          }
+
+          if (filtered.length === 0) {
+            gridEl.innerHTML =
+              '<div class="col-span-full py-12 text-center bg-[#FFF9EF] rounded-2xl border border-[#155D35]/12 p-6">' +
+              '<p class="text-base font-semibold text-[#132A1C]">No farm products matched your filter.</p>' +
+              '<p class="text-xs text-[#526658] mt-1">Try searching for Tomatoes, Oranges, Carrots, or reset the active category.</p>' +
+              '</div>';
+            return;
+          }
+
+          var html = '';
+          for (var i = 0; i < filtered.length; i++) {
+            var p = filtered[i];
+            var inCartQty = state.cart[p.id] || 0;
+            html +=
+              '<article class="bf-product-card rounded-2xl bg-white border border-[#155D35]/12 p-4 flex flex-col justify-between">' +
+              '<div>' +
+              '<div class="aspect-[4/3] rounded-xl bg-[#FFF9EF] p-4 flex items-center justify-center">' +
+              renderProductCardSvg(p.svgType) +
+              '</div>' +
+              '<div class="mt-3.5 flex items-center gap-1.5 text-xs text-[#526658]">' +
+              '<span class="uppercase tracking-wider font-medium text-[#155D35]">' +
+              p.categoryLabel +
+              '</span>' +
+              '<span aria-hidden="true">·</span>' +
+              '<span>' +
+              p.origin +
+              '</span>' +
+              '</div>' +
+              '<h3 class="text-base font-semibold text-[#132A1C] mt-1">' +
+              p.name +
+              '</h3>' +
+              '<div class="text-xs text-[#526658] mt-0.5">' +
+              p.unit +
+              (p.featuredInEvent ? ' · Special Event Pick' : '') +
+              '</div>' +
+              '</div>' +
+              '<div class="mt-4 pt-3 border-t border-[#155D35]/10 flex items-center justify-between gap-2">' +
+              '<span class="text-base font-bold text-[#155D35] bf-tabular">$' +
+              p.price.toFixed(2) +
+              '</span>' +
+              '<button type="button" data-add-product="' +
+              p.id +
+              '" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[#279447] text-white hover:bg-[#155D35] transition-colors whitespace-nowrap shrink-0 cursor-pointer">' +
+              (inCartQty > 0 ? 'Add More (' + inCartQty + ' in bag)' : 'Add to Cart') +
+              '</button>' +
+              '</div>' +
+              '</article>';
+          }
+          gridEl.innerHTML = html;
+        }
+
+        function updateCartUI() {
+          var totalItems = 0;
+          var subtotal = 0;
+          var listHtml = '';
+
+          for (var i = 0; i < STORE_PRODUCTS.length; i++) {
+            var p = STORE_PRODUCTS[i];
+            var qty = state.cart[p.id] || 0;
+            if (qty > 0) {
+              totalItems += qty;
+              var lineTotal = qty * p.price;
+              subtotal += lineTotal;
+              listHtml +=
+                '<div class="py-3 flex items-center justify-between gap-3">' +
+                '<div>' +
+                '<div class="text-sm font-semibold text-[#132A1C]">' +
+                p.name +
+                '</div>' +
+                '<div class="text-xs text-[#526658] bf-tabular">$' +
+                p.price.toFixed(2) +
+                ' × ' +
+                qty +
+                ' (' +
+                p.unit +
+                ')</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-2">' +
+                '<button type="button" data-cart-dec="' +
+                p.id +
+                '" aria-label="Decrease quantity of ' +
+                p.name +
+                '" class="w-7 h-7 rounded-md bg-[#FFF9EF] border border-[#155D35]/20 text-xs font-bold text-[#132A1C] cursor-pointer">-</button>' +
+                '<span class="text-xs font-semibold bf-tabular w-5 text-center">' +
+                qty +
+                '</span>' +
+                '<button type="button" data-cart-inc="' +
+                p.id +
+                '" aria-label="Increase quantity of ' +
+                p.name +
+                '" class="w-7 h-7 rounded-md bg-[#FFF9EF] border border-[#155D35]/20 text-xs font-bold text-[#132A1C] cursor-pointer">+</button>' +
+                '</div>' +
+                '</div>';
+            }
+          }
+
+          if (!listHtml) {
+            listHtml =
+              '<p class="py-8 text-center text-xs text-[#526658]">Your Farmart basket is currently empty. Add fresh produce from the catalog!</p>';
+          }
+
+          var countEl = document.getElementById('bf-cart-count');
+          var headerTotalEl = document.getElementById('bf-cart-header-total');
+          var drawerSubtotalEl = document.getElementById('bf-cart-drawer-subtotal');
+          var itemsListEl = document.getElementById('bf-cart-items-list');
+
+          if (countEl) countEl.textContent = String(totalItems);
+          if (headerTotalEl) headerTotalEl.textContent = subtotal.toFixed(2);
+          if (drawerSubtotalEl) drawerSubtotalEl.textContent = '$' + subtotal.toFixed(2);
+          if (itemsListEl) itemsListEl.innerHTML = listHtml;
+        }
+
+        function setCategoryFilter(cat) {
+          state.activeCategory = cat;
+          var tabs = document.querySelectorAll('.bf-filter-tab');
+          for (var i = 0; i < tabs.length; i++) {
+            var tab = tabs[i];
+            var isMatch = tab.getAttribute('data-filter-btn') === cat;
+            tab.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+            if (isMatch) {
+              tab.className =
+                'bf-filter-tab px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#155D35] text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer';
+            } else {
+              tab.className =
+                'bf-filter-tab px-3.5 py-2 text-xs font-medium rounded-lg text-[#526658] hover:text-[#132A1C] transition-colors whitespace-nowrap shrink-0 cursor-pointer';
+            }
+          }
+          renderCatalog();
+        }
+
+        /* ===================================================================
+           9. EVENT LISTENERS & INTERACTION BINDINGS
+           =================================================================== */
+        function bindEvents() {
+          // Pointer move for 3D perspective parallax (on-demand frame update)
+          window.addEventListener(
+            'pointermove',
+            function (e) {
+              if (!state.isActive) return;
+              state.pointerX = (e.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
+              state.pointerY = (e.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
+              if (!state.rafId) {
+                window.requestAnimationFrame(function (ts) {
+                  var t = (ts || 0) * 0.0018;
+                  update3DSceneTransforms(t);
+                  drawSettledParticles(t, false);
+                });
+              }
+            },
+            { passive: true }
+          );
+
+          window.addEventListener('resize', function () {
+            if (state.isActive) {
+              resizeCanvas();
+              update3DSceneTransforms(1.5);
+              drawSettledParticles(1.5, false);
+            }
+          });
+
+          // Escape key closes active breakout experience or open modals
+          window.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+              if (state.isActive) {
+                closeBreakoutSequence();
+              }
+              var cartModal = document.getElementById('bf-cart-drawer-backdrop');
+              if (cartModal && !cartModal.classList.contains('hidden')) {
+                cartModal.classList.add('hidden');
+                cartModal.classList.remove('flex');
+              }
+              var cfgModal = document.getElementById('bf-config-modal-backdrop');
+              if (cfgModal && !cfgModal.classList.contains('hidden')) {
+                cfgModal.classList.add('hidden');
+                cfgModal.classList.remove('flex');
+              }
+            }
+          });
+
+          // Demo bar & section play/replay buttons
+          var playBtn = document.getElementById('bf-btn-play-breakout');
+          var replayBtn = document.getElementById('bf-btn-replay-breakout');
+          var overlayReplayBtn = document.getElementById('bf-gb-overlay-replay-btn');
+          var overlayCloseBtn = document.getElementById('bf-gb-overlay-close-btn');
+          var backdropScrim = document.getElementById('bf-gb-backdrop-scrim');
+          var heroTriggerBtn = document.getElementById('bf-hero-trigger-breakout');
+          var sectionReplayBtn = document.getElementById('bf-section-replay-btn');
+
+          [playBtn, replayBtn, overlayReplayBtn, heroTriggerBtn, sectionReplayBtn].forEach(
+            function (btn) {
+              if (btn) {
+                btn.addEventListener('click', function () {
+                  startBreakoutSequence();
+                });
+              }
+            }
+          );
+
+          if (overlayCloseBtn) {
+            overlayCloseBtn.addEventListener('click', function () {
+              closeBreakoutSequence();
+            });
+          }
+
+          if (backdropScrim) {
+            backdropScrim.addEventListener('click', function () {
+              closeBreakoutSequence();
+            });
+          }
+
+          // Promotional CTA buttons inside the 3D Breakout
+          var primaryCtaEl = document.getElementById('bf-gb-primary-cta');
+          var secondaryCtaEl = document.getElementById('bf-gb-secondary-cta');
+
+          if (primaryCtaEl) {
+            primaryCtaEl.addEventListener('click', function () {
+              closeBreakoutSequence();
+              setCategoryFilter('event');
+            });
+          }
+
+          if (secondaryCtaEl) {
+            secondaryCtaEl.addEventListener('click', function () {
+              closeBreakoutSequence();
+              setCategoryFilter('all');
+            });
+          }
+
+          // Sound Toggle Button
+          var soundBtn = document.getElementById('bf-btn-sound-toggle');
+          if (soundBtn) {
+            soundBtn.addEventListener('click', function () {
+              state.soundEnabled = !state.soundEnabled;
+              soundBtn.setAttribute('aria-pressed', state.soundEnabled ? 'true' : 'false');
+              soundBtn.textContent = state.soundEnabled ? 'Sound: On' : 'Sound: Off';
+              if (state.soundEnabled) {
+                playProceduralSound('reveal');
+              }
+            });
+          }
+
+          // One-Click Download index.html Button
+          var downloadHtmlBtn = document.getElementById('bf-btn-download-html');
+          if (downloadHtmlBtn) {
+            downloadHtmlBtn.addEventListener('click', function () {
+              // Download this standalone page without relying on a server fetch.
+              var source = '<!doctype html>\n' + document.documentElement.outerHTML;
+              var blob = new Blob([source], { type: 'text/html;charset=utf-8' });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = url;
+              a.download = 'index.html';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.setTimeout(function () {
+                URL.revokeObjectURL(url);
+              }, 1500);
+            });
+          }
+
+          // Storefront Search Form
+          var searchForm = document.getElementById('bf-store-search-form');
+          var searchInput = document.getElementById('bf-store-search-input');
+          if (searchForm && searchInput) {
+            searchForm.addEventListener('submit', function (e) {
+              e.preventDefault();
+              state.searchQuery = searchInput.value;
+              renderCatalog();
+              var catalogEl = document.getElementById('farm-fresh-catalog');
+              if (catalogEl && catalogEl.scrollIntoView) {
+                catalogEl.scrollIntoView({ behavior: 'smooth' });
+              }
+            });
+            searchInput.addEventListener('input', function () {
+              state.searchQuery = searchInput.value;
+              renderCatalog();
+            });
+          }
+
+          // Delegated Clicks for Category Tabs, Quick Search, Add to Cart, Cart Drawer Steppers
+          document.addEventListener('click', function (e) {
+            var target = e.target;
+            if (!target || !target.closest) return;
+
+            var filterBtn = target.closest('[data-filter-btn]');
+            if (filterBtn) {
+              setCategoryFilter(filterBtn.getAttribute('data-filter-btn') || 'all');
+              return;
+            }
+
+            var navCatLink = target.closest('[data-category-nav]');
+            if (navCatLink) {
+              setCategoryFilter(navCatLink.getAttribute('data-category-nav') || 'all');
+              return;
+            }
+
+            var quickSearchBtn = target.closest('[data-quick-search]');
+            if (quickSearchBtn) {
+              var qVal = quickSearchBtn.getAttribute('data-quick-search') || '';
+              state.searchQuery = qVal;
+              if (searchInput) searchInput.value = qVal;
+              renderCatalog();
+              return;
+            }
+
+            var addProdBtn = target.closest('[data-add-product]');
+            if (addProdBtn) {
+              var prodId = addProdBtn.getAttribute('data-add-product');
+              if (prodId) {
+                state.cart[prodId] = (state.cart[prodId] || 0) + 1;
+                updateCartUI();
+                renderCatalog();
+              }
+              return;
+            }
+
+            var incBtn = target.closest('[data-cart-inc]');
+            if (incBtn) {
+              var incId = incBtn.getAttribute('data-cart-inc');
+              if (incId) {
+                state.cart[incId] = (state.cart[incId] || 0) + 1;
+                updateCartUI();
+                renderCatalog();
+              }
+              return;
+            }
+
+            var decBtn = target.closest('[data-cart-dec]');
+            if (decBtn) {
+              var decId = decBtn.getAttribute('data-cart-dec');
+              if (decId && state.cart[decId] > 0) {
+                state.cart[decId] -= 1;
+                updateCartUI();
+                renderCatalog();
+              }
+              return;
+            }
+          });
+
+          // Reset Filters Button
+          var clearFiltersBtn = document.getElementById('bf-btn-clear-filters');
+          if (clearFiltersBtn) {
+            clearFiltersBtn.addEventListener('click', function () {
+              state.searchQuery = '';
+              if (searchInput) searchInput.value = '';
+              setCategoryFilter('all');
+            });
+          }
+
+          var sectionFilterEventBtn = document.getElementById('bf-section-filter-event-btn');
+          if (sectionFilterEventBtn) {
+            sectionFilterEventBtn.addEventListener('click', function () {
+              setCategoryFilter('event');
+              var catalogEl = document.getElementById('farm-fresh-catalog');
+              if (catalogEl && catalogEl.scrollIntoView) {
+                catalogEl.scrollIntoView({ behavior: 'smooth' });
+              }
+            });
+          }
+
+          // Cart Drawer Open / Close / Checkout
+          var openCartBtn = document.getElementById('bf-btn-open-cart');
+          var closeCartBtn = document.getElementById('bf-btn-close-cart');
+          var cartBackdrop = document.getElementById('bf-cart-drawer-backdrop');
+          var checkoutBtn = document.getElementById('bf-btn-checkout-cart');
+          var checkoutFeedback = document.getElementById('bf-cart-checkout-feedback');
+
+          if (openCartBtn && cartBackdrop) {
+            openCartBtn.addEventListener('click', function () {
+              if (checkoutFeedback) checkoutFeedback.classList.add('hidden');
+              cartBackdrop.classList.remove('hidden');
+              cartBackdrop.classList.add('flex');
+            });
+          }
+          if (closeCartBtn && cartBackdrop) {
+            closeCartBtn.addEventListener('click', function () {
+              cartBackdrop.classList.add('hidden');
+              cartBackdrop.classList.remove('flex');
+            });
+          }
+          if (checkoutBtn && checkoutFeedback) {
+            checkoutBtn.addEventListener('click', function () {
+              checkoutFeedback.classList.remove('hidden');
+            });
+          }
+
+          // Configuration & Botble Integration Modal
+          var openCfgBtn = document.getElementById('bf-btn-open-config');
+          var footerDocsBtn = document.getElementById('bf-footer-open-docs');
+          var closeCfgBtn = document.getElementById('bf-btn-close-config');
+          var cfgBackdrop = document.getElementById('bf-config-modal-backdrop');
+          var cfgForm = document.getElementById('bf-config-form');
+          var resetCfgBtn = document.getElementById('bf-btn-reset-config');
+
+          function populateConfigInputs() {
+            var hInput = document.getElementById('bf-cfg-headline');
+            var sInput = document.getElementById('bf-cfg-subheadline');
+            var oInput = document.getElementById('bf-cfg-offer');
+            var pInput = document.getElementById('bf-cfg-primary-cta');
+            var secInput = document.getElementById('bf-cfg-secondary-cta');
+            var dInput = document.getElementById('bf-cfg-delay');
+
+            if (hInput) hInput.value = BREAKOUT_CONFIG.headline;
+            if (sInput) sInput.value = BREAKOUT_CONFIG.subheadline;
+            if (oInput) oInput.value = BREAKOUT_CONFIG.offerText;
+            if (pInput) pInput.value = BREAKOUT_CONFIG.primaryCtaLabel;
+            if (secInput) secInput.value = BREAKOUT_CONFIG.secondaryCtaLabel;
+            if (dInput) dInput.value = String(BREAKOUT_CONFIG.autoTriggerDelayMs);
+          }
+
+          [openCfgBtn, footerDocsBtn].forEach(function (btn) {
+            if (btn && cfgBackdrop) {
+              btn.addEventListener('click', function () {
+                populateConfigInputs();
+                cfgBackdrop.classList.remove('hidden');
+                cfgBackdrop.classList.add('flex');
+              });
+            }
+          });
+
+          if (closeCfgBtn && cfgBackdrop) {
+            closeCfgBtn.addEventListener('click', function () {
+              cfgBackdrop.classList.add('hidden');
+              cfgBackdrop.classList.remove('flex');
+            });
+          }
+
+          if (resetCfgBtn) {
+            resetCfgBtn.addEventListener('click', function () {
+              BREAKOUT_CONFIG.headline = 'FRESHNESS IS BREAKING THROUGH!';
+              BREAKOUT_CONFIG.subheadline =
+                'Celebrate our Special Farm Fresh Event with incredible grocery experiences.';
+              BREAKOUT_CONFIG.offerText = 'SPECIAL EVENT — LIMITED TIME';
+              BREAKOUT_CONFIG.primaryCtaLabel = 'EXPLORE THE EVENT';
+              BREAKOUT_CONFIG.secondaryCtaLabel = 'SHOP FRESH PRODUCTS';
+              BREAKOUT_CONFIG.autoTriggerDelayMs = 2600;
+              populateConfigInputs();
+              applyPromotionalConfigToDom();
+            });
+          }
+
+          if (cfgForm && cfgBackdrop) {
+            cfgForm.addEventListener('submit', function (e) {
+              e.preventDefault();
+              var hInput = document.getElementById('bf-cfg-headline');
+              var sInput = document.getElementById('bf-cfg-subheadline');
+              var oInput = document.getElementById('bf-cfg-offer');
+              var pInput = document.getElementById('bf-cfg-primary-cta');
+              var secInput = document.getElementById('bf-cfg-secondary-cta');
+              var dInput = document.getElementById('bf-cfg-delay');
+
+              if (hInput && hInput.value.trim()) BREAKOUT_CONFIG.headline = hInput.value.trim();
+              if (sInput && sInput.value.trim()) BREAKOUT_CONFIG.subheadline = sInput.value.trim();
+              if (oInput && oInput.value.trim()) BREAKOUT_CONFIG.offerText = oInput.value.trim();
+              if (pInput && pInput.value.trim()) BREAKOUT_CONFIG.primaryCtaLabel = pInput.value.trim();
+              if (secInput && secInput.value.trim())
+                BREAKOUT_CONFIG.secondaryCtaLabel = secInput.value.trim();
+              if (dInput && Number(dInput.value) >= 500) {
+                BREAKOUT_CONFIG.autoTriggerDelayMs = Number(dInput.value);
+              }
+
+              cfgBackdrop.classList.add('hidden');
+              cfgBackdrop.classList.remove('flex');
+              startBreakoutSequence();
+            });
+          }
+        }
+
+        /* ===================================================================
+           10. INITIALIZATION & AUTO-TRIGGER SUPPORT
+           =================================================================== */
+        function init() {
+          renderCatalog();
+          updateCartUI();
+          applyPromotionalConfigToDom();
+          bindEvents();
+
+          var params = new URLSearchParams(window.location.search || '');
+          var autostartParam = params.get('autostart');
+          if (autostartParam === '0') {
+            return;
+          }
+          var delay =
+            autostartParam === '1' ? 120 : Number(BREAKOUT_CONFIG.autoTriggerDelayMs);
+
+          if (delay > 0) {
+            state.autoTriggerTimeout = window.setTimeout(function () {
+              startBreakoutSequence();
+            }, delay);
+          }
+        }
+
+        // Expose public API under isolated namespace for dynamic Botble Farmart usage
+        window.BotbleFarmartBreakout = {
+          config: BREAKOUT_CONFIG,
+          play: startBreakoutSequence,
+          replay: startBreakoutSequence,
+          close: closeBreakoutSequence,
+          init: init
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init);
+        } else {
+          init();
+        }
+      })();
+    </script>
+  </body>
+</html>
